@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoom Integration</title>
+    <style>
+        .zoom-connect-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #2D8CFF;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .zoom-connect-btn:hover {
+            background-color: #2681F2;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #userProfile {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .get-profile-btn {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background-color: #34A853;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .get-profile-btn:hover {
+            background-color: #2d9147;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginSection">
+        <h2>Connect your Zoom Account</h2>
+        <a href="/auth/zoom" class="zoom-connect-btn">Connect with Zoom</a>
+    </div>
+
+    <div id="profileSection" class="hidden">
+        <h2>Welcome to Your Dashboard</h2>
+        <button onclick="fetchUserProfile()" class="get-profile-btn">Get Zoom Profile</button>
+        <div id="userProfile"></div>
+    </div>
+
+    <script>
+        // check if user just completed authentication
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('connected') === 'true') {
+                showProfileSection();
+                // clean up the url
+                window.history.replaceState({}, document.title, '/');
+            }
+            if (urlParams.get('error')) {
+                alert('Failed to connect to Zoom. Please try again.');
+            }
+        }
+
+        function showProfileSection() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('profileSection').classList.remove('hidden');
+        }
+
+        async function fetchUserProfile() {
+            try {
+                const response = await fetch('/api/zoom/user');
+                if (!response.ok) throw new Error('Failed to fetch profile');
+                
+                const data = await response.json();
+                const profileHtml = `
+                    <h3>Profile Information</h3>
+                    <p><strong>Name:</strong> ${data.first_name} ${data.last_name}</p>
+                    <p><strong>Email:</strong> ${data.email}</p>
+                    <p><strong>Account ID:</strong> ${data.account_id}</p>
+                `;
+                
+                document.getElementById('userProfile').innerHTML = profileHtml;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('userProfile').innerHTML = 
+                    '<p style="color: red;">Error fetching profile. Please try again.</p>';
+            }
+        }
+    </script>
+</body>
+</html> 

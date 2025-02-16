@@ -1,0 +1,11 @@
+pyyaml
+opencv-python
+mediapipe
+deepgram
+requests
+python-dotenv
+watchdog
+functools
+transformers
+tensorflow
+tf-keras

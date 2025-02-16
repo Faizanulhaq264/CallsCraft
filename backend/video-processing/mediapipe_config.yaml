@@ -1,0 +1,52 @@
+# image_path: "Video/mediapipe_testing/images/1.jpg"
+# camera_number: 0    #using the onyl camera available on the laptop
+
+# # IRIS landmarks
+# LEFT_IRIS: [474, 475, 476, 477]
+# RIGHT_IRIS: [469, 470, 471, 472]
+
+# image_path: "Video/mediapipe_testing/images/1.jpg"
+# camera_number: 0    # Using the only camera available on the laptop
+
+# # IRIS landmarks
+# LEFT_IRIS: [469, 470, 471, 472]
+# RIGHT_IRIS: [474, 475, 476, 477]
+
+# # Eye landmarks (eye corners)
+# LEFT_EYE_LANDMARKS: [33, 133]   # Left eye: inner and outer corners
+# RIGHT_EYE_LANDMARKS: [362, 263] # Right eye: inner and outer corners
+# ============================
+image_path: "Video/mediapipe_testing/images/1.jpg"
+camera_number: 0    # Using the only camera available on the laptop
+
+# IRIS landmarks
+LEFT_IRIS: [469, 470, 471, 472]
+RIGHT_IRIS: [474, 475, 476, 477]
+
+# Eye landmarks (eye corners)
+LEFT_EYE_LANDMARKS: [33, 133]   # Left eye: inner and outer corners
+RIGHT_EYE_LANDMARKS: [362, 263] # Right eye: inner and outer corners
+
+# Eyelid landmarks
+LEFT_EYE_TOP: [159]
+LEFT_EYE_BOTTOM: [145]
+RIGHT_EYE_TOP: [386]
+RIGHT_EYE_BOTTOM: [374]
+
+
+
+
+# config.yaml
+
+# thresholds for eye tracking
+HORIZONTAL_THRESHOLD_LEFT: 0.35
+HORIZONTAL_THRESHOLD_RIGHT: 0.65
+VERTICAL_THRESHOLD_UP: 0.35
+VERTICAL_THRESHOLD_DOWN: 0.65
+
+# multipliers for eye distances
+EYE_HORIZONTAL_MULTIPLIER: 0.4
+EYE_VERTICAL_MULTIPLIER: 0.8
+
+# threshold for posture detection
+ANGLE_THRESHOLD: 5  # degrees, adjust based on calibration

@@ -1,0 +1,29 @@
+#GLOBAL
+.vscode
+build/
+*.zip
+random.ipynb
+#VIRTUAL ENVIRONMENT
+.venv/
+.venv/lib/python3.12/site-packages
+.venv/share
+.venv/lib64/python3.12/site-packages
+.venv/include
+
+# BACKEND
+# backend/node_modules/
+# backend/recordings
+# backend/.env
+# backend/npm-debug.log
+# backend/yarn-error.log
+# backend/package-lock.json
+# backend/yarn.lock
+
+# #FRONTEND
+# frontend/.env
+# frontend/node_modules
+
+# #ZOOM BOT
+# zoomBot/call_transcripts
+# zoomBot/transcripts
+# zoomBot/recordings

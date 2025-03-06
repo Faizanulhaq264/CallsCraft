@@ -3,6 +3,7 @@
 build/
 *.zip
 random.ipynb
+.env
 #VIRTUAL ENVIRONMENT
 .venv/
 .venv/lib/python3.12/site-packages
@@ -13,7 +14,7 @@ node_modules/
 # BACKEND
 backend/node_modules/
 # backend/recordings
-# backend/.env
+backend/.env
 # backend/npm-debug.log
 # backend/yarn-error.log
 # backend/package-lock.json

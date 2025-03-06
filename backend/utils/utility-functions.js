@@ -1,6 +1,9 @@
 const KJUR = require('jsrsasign');
+const crypto = require('crypto');
 require('dotenv').config({ path: '../.env' });
 
+
+/* =================================================================================== */
 // Function to validate password strength
 function isPasswordStrong(password) {
     const minLength = 8;
@@ -12,12 +15,14 @@ function isPasswordStrong(password) {
     return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChars;
 }
 
+/* =================================================================================== */
 // Function to validate email format
 function isEmailValid(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 }
 
+/* =================================================================================== */
 // Function to generate Zoom SDK JWT token
 function generateZoomToken(meetingNumber, role) {
     const key = process.env.ZOOM_MEETING_SDK_KEY;
@@ -43,8 +48,29 @@ function generateZoomToken(meetingNumber, role) {
     return sdkJWT;
 }
 
+/* =================================================================================== */
+// Encryption function
+function encrypt(text) {
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(process.env.ENCRYPTION_KEY), Buffer.from(process.env.IV));
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return encrypted.toString('hex');
+}
+
+// Decryption function
+function decrypt(text) {
+    const encryptedText = Buffer.from(text, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(process.env.ENCRYPTION_KEY), Buffer.from(process.env.IV));
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+}
+
+/* =================================================================================== */
 module.exports = {
     isPasswordStrong,
     isEmailValid,
-    generateZoomToken
+    generateZoomToken,
+    encrypt,
+    decrypt
 };

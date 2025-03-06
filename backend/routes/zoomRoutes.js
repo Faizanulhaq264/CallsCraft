@@ -5,6 +5,8 @@
 
 const express = require('express');
 const axios = require('axios');
+const { encrypt, decrypt } = require('../utils/utility-functions');  // Import encryption functions
+const db = require('../db/db-configs');  // Import the database connection
 require('dotenv').config();
 
 const router = express.Router();
@@ -62,6 +64,32 @@ router.get('/callback', async (req, res) => {
 
         const pmiPassword = userSettings.data.schedule_meeting.pmi_password;
         console.log('PMI Password:', pmiPassword);
+
+        // Encrypt the values
+        const encryptedPMI = encrypt(userProfile.pmi);
+        const encryptedPMIPassword = encrypt(pmiPassword);
+        const encryptedZoomID = encrypt(userProfile.id);
+        const encryptedAccessToken = encrypt(access_token);
+
+        // Store PMI ID, PMI password, Zoom user ID, and access token in the database
+        const userID = req.session.userID;  // Assuming you have the user's ID in the session
+        const insertZoomInfoQuery = `
+            INSERT INTO UserZoomSettings (UserID, PMI, PMI_Password, ZoomID, ZoomAccessToken)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+            PMI = VALUES(PMI),
+            PMI_Password = VALUES(PMI_Password),
+            ZoomID = VALUES(ZoomID),
+            ZoomAccessToken = VALUES(ZoomAccessToken);
+        `;
+        db.query(insertZoomInfoQuery, [userID, encryptedPMI, encryptedPMIPassword, encryptedZoomID, encryptedAccessToken], (err, result) => {
+            if (err) {
+                console.error('Error updating Zoom info:', err);
+                return res.status(500).json({ message: 'Error updating Zoom info' });
+            }
+
+            console.log('Zoom info updated successfully');
+        });
 
         // Redirect back to frontend with PMI and password
         const params = new URLSearchParams({

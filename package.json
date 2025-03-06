@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@deepgram/sdk": "^3.10.1",
+    "node-record-lpcm16": "^1.0.1",
+    "wavefile": "^11.0.0",
+    "ws": "^8.18.0"
+  },
+  "type": "module"
+}

@@ -9,9 +9,9 @@ random.ipynb
 .venv/share
 .venv/lib64/python3.12/site-packages
 .venv/include
-
+node_modules/
 # BACKEND
-# backend/node_modules/
+backend/node_modules/
 # backend/recordings
 # backend/.env
 # backend/npm-debug.log

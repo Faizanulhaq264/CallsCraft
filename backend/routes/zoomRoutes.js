@@ -1,36 +1,16 @@
+/* 
+    Contains all the necessary endpoints to interact with Zoom Official Servers
+    These endpoints are used to get the authentication token for users and get credentials
+*/
+
 const express = require('express');
 const axios = require('axios');
 require('dotenv').config();
-const WebSocket = require('ws');
-const bodyParser = require('body-parser');
 
-// Create express app first
-const app = express();
+const router = express.Router();
 
-// Add body-parser middleware
-app.use(bodyParser.json());
-
-// Then create server with app
-const server = require('http').createServer(app);
-const wss = new WebSocket.Server({ server });
-
-app.use(express.static('public'));
-
-// Store active WebSocket connections
-const clients = new Set();
-
-// WebSocket connection handler
-wss.on('connection', (ws) => {
-    clients.add(ws);
-    console.log('New WebSocket client connected');
-
-    ws.on('close', () => {
-        clients.delete(ws);
-        console.log('Client disconnected');
-    });
-});
-
-app.get('/auth/zoom', (req, res) => {                           //Authentication route, the user will get redirected to the zoom login portal for authentication
+// Authentication route, the user will get redirected to the Zoom login portal for authentication
+router.get('/auth/zoom', (req, res) => {
     const zoomAuthUrl = 'https://zoom.us/oauth/authorize';
     const params = new URLSearchParams({
         response_type: 'code',
@@ -40,7 +20,7 @@ app.get('/auth/zoom', (req, res) => {                           //Authentication
     res.redirect(`${zoomAuthUrl}?${params.toString()}`); // redirect user to zoom login
 });
 
-// add this new function to get user profile
+// Function to get user profile
 const getUserProfile = async (accessToken) => {
     const response = await axios.get('https://api.zoom.us/v2/users/me', {
         headers: {
@@ -50,7 +30,8 @@ const getUserProfile = async (accessToken) => {
     return response.data;
 };
 
-app.get('/callback', async (req, res) => {
+// Callback endpoint to handle Zoom OAuth
+router.get('/callback', async (req, res) => {
     const { code } = req.query;
     
     try {
@@ -67,11 +48,10 @@ app.get('/callback', async (req, res) => {
         
         const { access_token } = tokenResponse.data;
         
-        // get user profile after successful authentication
+        // Get user profile after successful authentication
         const userProfile = await getUserProfile(access_token);
-        // console.log('User Profile Fetched:', userProfile);
-        console.log("User PMI ID:", userProfile.pmi);    //users pmi id
-        console.log("User Id:", userProfile.id);         //users id
+        console.log("User PMI ID:", userProfile.pmi);    // User's PMI ID
+        console.log("User Id:", userProfile.id);         // User's ID
         
         // Fetch PMI password using the correct endpoint
         const userSettings = await axios.get(`https://api.zoom.us/v2/users/${userProfile.id}/settings`, {
@@ -97,9 +77,4 @@ app.get('/callback', async (req, res) => {
     }
 });
 
-
-const PORT = process.env.PORT || 4000; // match your oauth redirect port
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`); // start the server
-    // console.log("")
-}); 
+module.exports = router;

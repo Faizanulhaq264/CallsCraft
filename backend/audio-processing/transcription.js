@@ -3,7 +3,7 @@ const Microphone = require('node-microphone');
 
 const live = async () => {
   // Move API key to environment variables for security
-  const deepgramApiKey = "e6de0558fd844056dbc4e4f7bb8843328c626426";
+  const deepgramApiKey = "d7ce2e3f6336e4d41ab55e54023ebdb03b74f4fd";
 
   // Initialize the Deepgram SDK
   const deepgram = createClient(deepgramApiKey);

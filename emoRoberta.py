@@ -8,4 +8,4 @@ emotion = pipeline('sentiment-analysis',
                     model='arpanghoshal/EmoRoBERTa')
 
 emotion_labels = emotion("Thanks for using it.")
-print(emotion_labels)
+print(emotion_labels[0]['label'])

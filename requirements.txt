@@ -9,3 +9,4 @@ functools
 transformers
 tensorflow
 tf-keras
+pyaudio

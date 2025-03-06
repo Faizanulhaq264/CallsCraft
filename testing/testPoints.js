@@ -24,6 +24,6 @@ function generateSignature(key, secret, meetingNumber, role) {
   const sdkJWT = KJUR.jws.JWS.sign('HS256', sHeader, sPayload, secret)
   return sdkJWT
 }
-console.log(process.env.ZOOM_MEETING_SDK_KEY)
-console.log(process.env.ZOOM_MEETING_SDK_SECRET)
+// console.log(process.env.ZOOM_MEETING_SDK_KEY)
+// console.log(process.env.ZOOM_MEETING_SDK_SECRET)
 console.log(generateSignature(process.env.ZOOM_MEETING_SDK_KEY, process.env.ZOOM_MEETING_SDK_SECRET, 4954003286, 1))

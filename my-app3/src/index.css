@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #8b5cf6; /* Deep purple */
+  --primary-dark: #7c3aed;
+  --background: #121212; /* Dark background */
+  --text: #f3f4f6;
+  --card-bg: #1e1e1e;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text);
+  font-family: "Inter", sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.page-transition {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.btn {
+  @apply px-6 py-3 rounded-md font-medium transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-opacity-50;
+}
+
+.btn-primary {
+  @apply bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500;
+}
+
+.btn-secondary {
+  @apply bg-gray-800 text-white hover:bg-gray-700 focus:ring-gray-600;
+}
+
+.card {
+  @apply bg-gray-900 rounded-xl shadow-lg p-6 transition-all duration-300;
+}
+
+.input {
+  @apply bg-gray-800 border border-gray-700 rounded-md px-4 py-2 text-white w-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent;
+}
+
+.form-group {
+  @apply mb-4;
+}
+
+.form-label {
+  @apply block text-sm font-medium mb-1 text-gray-300;
+}
+

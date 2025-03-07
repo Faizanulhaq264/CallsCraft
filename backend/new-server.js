@@ -1,12 +1,16 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const cors = require('cors');
 
 // Load environment variables from .env file
 dotenv.config();
 
 const app = express();
 app.use(express.json());
-
+app.use(cors({
+    origin: process.env.CLIENT_URL ,
+    credentials: true
+}));
 /* ======================================================================================== */
 
 // Import routers

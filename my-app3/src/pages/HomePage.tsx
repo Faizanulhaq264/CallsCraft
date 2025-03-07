@@ -7,24 +7,28 @@ import Button from "../components/Button"
 import PageTransition from "../components/PageTransition"
 
 const HomePage = () => {
-  const { user, logout } = useAuth()
+  const { currentUser, logout } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    // If user hasn't integrated with Zoom, redirect to Zoom integration page
-    if (user && !user.zoomIntegrated) {
+    // If currentUser hasn't integrated with Zoom, redirect to Zoom integration page
+    if (currentUser && !currentUser.zoomIntegrated) {
       navigate("/zoom-integration")
     }
-  }, [user, navigate])
+  }, [currentUser, navigate])
 
   return (
     <PageTransition>
       <div className="min-h-screen">
-        <header className="bg-gray-900 shadow-lg">
+        <header className="bg-black border-b border-gray-800 shadow-lg">
           <div className="container mx-auto px-4 py-6 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-white">CallsCraft</h1>
+            <h1 className="text-2xl font-bold text-white flex items-center">
+              <span className="bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                CallsCraft
+              </span>
+            </h1>
             <div className="flex items-center gap-4">
-              <span className="text-gray-300">Welcome, {user?.name || "User"}</span>
+              <span className="text-gray-300">Welcome, {currentUser?.name || "User"}</span>
               <Button variant="secondary" onClick={logout}>
                 Logout
               </Button>
@@ -34,7 +38,11 @@ const HomePage = () => {
 
         <main className="container mx-auto px-4 py-12">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Welcome to CallsCraft</h2>
+            <h2 className="text-4xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                Welcome to CallsCraft
+              </span>
+            </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
               Your platform for seamless Zoom call management and scheduling
             </p>
@@ -42,11 +50,11 @@ const HomePage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div
-              className="card hover:shadow-purple-900/20 hover:translate-y-[-5px] cursor-pointer"
+              className="bg-gradient-to-br from-gray-900 to-black border border-purple-900/30 rounded-xl p-6 shadow-lg hover:shadow-purple-900/20 hover:translate-y-[-5px] transition-all duration-300 cursor-pointer"
               onClick={() => navigate("/dashboard")}
             >
               <div className="text-center">
-                <div className="bg-purple-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-700/30">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-8 w-8 text-purple-500"
@@ -62,20 +70,20 @@ const HomePage = () => {
                     />
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold mb-2">View Dashboard</h3>
+                <h3 className="text-xl font-bold mb-2 text-white">View Dashboard</h3>
                 <p className="text-gray-400">Access your call history, analytics, and scheduled calls</p>
               </div>
             </div>
 
             <div
-              className="card hover:shadow-purple-900/20 hover:translate-y-[-5px] cursor-pointer"
+              className="bg-gradient-to-br from-gray-900 to-black border border-cyan-900/30 rounded-xl p-6 shadow-lg hover:shadow-cyan-900/20 hover:translate-y-[-5px] transition-all duration-300 cursor-pointer"
               onClick={() => navigate("/create-call")}
             >
               <div className="text-center">
-                <div className="bg-purple-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="bg-gradient-to-br from-cyan-900/30 to-cyan-800/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-cyan-700/30">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-8 w-8 text-purple-500"
+                    className="h-8 w-8 text-cyan-500"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -83,7 +91,7 @@ const HomePage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold mb-2">Create Call</h3>
+                <h3 className="text-xl font-bold mb-2 text-white">Create Call</h3>
                 <p className="text-gray-400">Start a new Zoom call with a client</p>
               </div>
             </div>

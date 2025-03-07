@@ -46,7 +46,11 @@ const LoginPage = () => {
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+            <h1 className="text-3xl font-bold mb-2">
+              <span className="bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                Welcome Back
+              </span>
+            </h1>
             <p className="text-gray-400">Log in to your account</p>
           </div>
 
@@ -74,19 +78,24 @@ const LoginPage = () => {
             />
 
             <div className="flex justify-end mb-6">
-              <Link to="#" className="text-sm text-purple-500 hover:text-purple-400">
+              <Link to="#" className="text-sm text-purple-500 hover:text-cyan-400 transition-colors duration-300">
                 Forgot password?
               </Link>
             </div>
 
-            <Button type="submit" fullWidth disabled={loading}>
+            <Button
+              type="submit"
+              fullWidth
+              disabled={loading}
+              className="bg-gradient-to-r from-purple-600 to-purple-500"
+            >
               {loading ? "Logging In..." : "Log In"}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-gray-400">
             Don't have an account?{" "}
-            <Link to="/signup" className="text-purple-500 hover:text-purple-400">
+            <Link to="/signup" className="text-purple-500 hover:text-cyan-400 transition-colors duration-300">
               Sign Up
             </Link>
           </div>

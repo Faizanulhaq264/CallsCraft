@@ -2,17 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --primary: #8b5cf6; /* Deep purple */
-  --primary-dark: #7c3aed;
-  --background: #121212; /* Dark background */
-  --text: #f3f4f6;
-  --card-bg: #1e1e1e;
+@layer base {
+  :root {
+    --background: 0 0% 0%; /* Pitch black */
+    --foreground: 0 0% 100%; /* Pure white */
+
+    --card: 0 0% 4%; /* Very dark gray for cards */
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 265 89% 58%; /* Deep purple */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 187 100% 42%; /* Cyan */
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 265 89% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 265 89% 58%;
+
+    --radius: 0.5rem;
+  }
 }
 
 body {
-  background-color: var(--background);
-  color: var(--text);
+  background-color: #000000; /* Pitch black */
+  color: #ffffff; /* Pure white */
   font-family: "Inter", sans-serif;
   margin: 0;
   padding: 0;
@@ -38,19 +64,19 @@ body {
 }
 
 .btn-primary {
-  @apply bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500;
+  @apply bg-gradient-to-r from-purple-600 to-purple-500 text-white hover:from-purple-700 hover:to-purple-600 focus:ring-purple-500 shadow-lg hover:shadow-neon-purple;
 }
 
 .btn-secondary {
-  @apply bg-gray-800 text-white hover:bg-gray-700 focus:ring-gray-600;
+  @apply bg-gradient-to-r from-cyan-600 to-cyan-500 text-white hover:from-cyan-700 hover:to-cyan-600 focus:ring-cyan-500 shadow-lg hover:shadow-neon-cyan;
 }
 
 .card {
-  @apply bg-gray-900 rounded-xl shadow-lg p-6 transition-all duration-300;
+  @apply bg-card rounded-xl shadow-lg p-6 transition-all duration-300 border border-gray-800;
 }
 
 .input {
-  @apply bg-gray-800 border border-gray-700 rounded-md px-4 py-2 text-white w-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent;
+  @apply bg-muted border border-input rounded-md px-4 py-2 text-white w-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent;
 }
 
 .form-group {
@@ -59,5 +85,24 @@ body {
 
 .form-label {
   @apply block text-sm font-medium mb-1 text-gray-300;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
 }
 

@@ -41,7 +41,7 @@ const ZoomIntegrationPage = () => {
           {!isIntegrated ? (
             <div className="text-center">
               <div className="mb-6">
-                <div className="bg-purple-900/30 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="bg-gradient-to-br from-purple-900/20 to-purple-800/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-700/30">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-10 w-10 text-purple-500"
@@ -75,7 +75,7 @@ const ZoomIntegrationPage = () => {
           ) : (
             <div className="text-center">
               <div className="mb-6">
-                <div className="bg-green-900/30 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="bg-gradient-to-br from-green-900/20 to-green-800/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-700/30">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-10 w-10 text-green-500"
@@ -93,8 +93,19 @@ const ZoomIntegrationPage = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Button onClick={() => navigate("/dashboard")}>View Dashboard</Button>
-                <Button onClick={() => navigate("/create-call")}>Create Call</Button>
+                <Button
+                  onClick={() => navigate("/dashboard")}
+                  className="bg-gradient-to-r from-purple-600 to-purple-500"
+                >
+                  View Dashboard
+                </Button>
+                <Button
+                  onClick={() => navigate("/create-call")}
+                  variant="secondary"
+                  className="bg-gradient-to-r from-cyan-600 to-cyan-500"
+                >
+                  Create Call
+                </Button>
               </div>
             </div>
           )}

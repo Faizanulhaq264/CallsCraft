@@ -1,14 +1,12 @@
 "use client"
 
-import { Card } from "@/components/ui/card"
-
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import Button from "../components/Button"
 import PageTransition from "../components/PageTransition"
 
 const DashboardPage = () => {
-  const { user, logout } = useAuth()
+  const { currentUser, logout } = useAuth()
   const navigate = useNavigate()
 
   // Mock data for dashboard
@@ -21,11 +19,15 @@ const DashboardPage = () => {
   return (
     <PageTransition>
       <div className="min-h-screen">
-        <header className="bg-gray-900 shadow-lg">
+        <header className="bg-black border-b border-gray-800 shadow-lg">
           <div className="container mx-auto px-4 py-6 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-white">CallsCraft</h1>
+            <h1 className="text-2xl font-bold text-white flex items-center">
+              <span className="bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                CallsCraft
+              </span>
+            </h1>
             <div className="flex items-center gap-4">
-              <span className="text-gray-300">Welcome, {user?.name || "User"}</span>
+              <span className="text-gray-300">Welcome, {currentUser?.name || "User"}</span>
               <Button variant="secondary" onClick={logout}>
                 Logout
               </Button>
@@ -40,20 +42,20 @@ const DashboardPage = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card className="bg-purple-900/20 border border-purple-800">
+            <div className="bg-gradient-to-br from-gray-900 to-black border border-purple-900/30 rounded-xl p-6 shadow-lg hover:shadow-purple-900/10 transition-all duration-300">
               <h3 className="text-lg font-medium text-gray-300 mb-2">Total Calls</h3>
-              <p className="text-3xl font-bold">24</p>
-            </Card>
+              <p className="text-3xl font-bold text-white">24</p>
+            </div>
 
-            <Card className="bg-purple-900/20 border border-purple-800">
+            <div className="bg-gradient-to-br from-gray-900 to-black border border-purple-900/30 rounded-xl p-6 shadow-lg hover:shadow-purple-900/10 transition-all duration-300">
               <h3 className="text-lg font-medium text-gray-300 mb-2">This Month</h3>
-              <p className="text-3xl font-bold">8</p>
-            </Card>
+              <p className="text-3xl font-bold text-white">8</p>
+            </div>
 
-            <Card className="bg-purple-900/20 border border-purple-800">
+            <div className="bg-gradient-to-br from-gray-900 to-black border border-purple-900/30 rounded-xl p-6 shadow-lg hover:shadow-purple-900/10 transition-all duration-300">
               <h3 className="text-lg font-medium text-gray-300 mb-2">Average Duration</h3>
-              <p className="text-3xl font-bold">32 min</p>
-            </Card>
+              <p className="text-3xl font-bold text-white">32 min</p>
+            </div>
           </div>
 
           <div className="card mb-8">

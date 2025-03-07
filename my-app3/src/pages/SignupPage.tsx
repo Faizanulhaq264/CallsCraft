@@ -52,7 +52,11 @@ const SignupPage = () => {
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
+            <h1 className="text-3xl font-bold mb-2">
+              <span className="bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                Create Account
+              </span>
+            </h1>
             <p className="text-gray-400">Join us to start making Zoom calls</p>
           </div>
 
@@ -97,14 +101,19 @@ const SignupPage = () => {
               error={errors.confirmPassword}
             />
 
-            <Button type="submit" fullWidth disabled={loading} className="mt-6">
+            <Button
+              type="submit"
+              fullWidth
+              disabled={loading}
+              className="mt-6 bg-gradient-to-r from-purple-600 to-purple-500"
+            >
               {loading ? "Creating Account..." : "Sign Up"}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-gray-400">
             Already have an account?{" "}
-            <Link to="/login" className="text-purple-500 hover:text-purple-400">
+            <Link to="/login" className="text-purple-500 hover:text-cyan-400 transition-colors duration-300">
               Log In
             </Link>
           </div>

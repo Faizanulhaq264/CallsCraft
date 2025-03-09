@@ -13,13 +13,23 @@ const router = express.Router();
 
 // Authentication route, the user will get redirected to the Zoom login portal for authentication
 router.get('/auth/zoom', (req, res) => {
+    const { userId } = req.query; // Get userId from query parameter
+    
+    if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+    }
+    
+    // Store userId in the state parameter for security
+    const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
+    
     const zoomAuthUrl = 'https://zoom.us/oauth/authorize';
     const params = new URLSearchParams({
         response_type: 'code',
         client_id: process.env.ZOOM_CLIENT_ID,
-        redirect_uri: process.env.ZOOM_REDIRECT_URI
+        redirect_uri: process.env.ZOOM_REDIRECT_URI,
+        state // Include state parameter with encoded userId
     });
-    res.redirect(`${zoomAuthUrl}?${params.toString()}`); // redirect user to zoom login
+    res.redirect(`${zoomAuthUrl}?${params.toString()}`);
 });
 
 // Function to get user profile
@@ -34,7 +44,17 @@ const getUserProfile = async (accessToken) => {
 
 // Callback endpoint to handle Zoom OAuth
 router.get('/callback', async (req, res) => {
-    const { code } = req.query;
+    const { code, state } = req.query;
+    
+    // Decode the state parameter to get userId
+    let userId;
+    try {
+        const decodedState = JSON.parse(Buffer.from(state, 'base64').toString());
+        userId = decodedState.userId;
+    } catch (error) {
+        console.error('Invalid state parameter:', error);
+        return res.redirect(`${process.env.CLIENT_URL}?error=invalid_state`);
+    }
     
     try {
         const tokenResponse = await axios.post('https://zoom.us/oauth/token', null, {
@@ -72,7 +92,6 @@ router.get('/callback', async (req, res) => {
         const encryptedAccessToken = encrypt(access_token);
 
         // Store PMI ID, PMI password, Zoom user ID, and access token in the database
-        const userID = req.session.userID;  // Assuming you have the user's ID in the session
         const insertZoomInfoQuery = `
             INSERT INTO UserZoomSettings (UserID, PMI, PMI_Password, ZoomID, ZoomAccessToken)
             VALUES (?, ?, ?, ?, ?)
@@ -82,7 +101,7 @@ router.get('/callback', async (req, res) => {
             ZoomID = VALUES(ZoomID),
             ZoomAccessToken = VALUES(ZoomAccessToken);
         `;
-        db.query(insertZoomInfoQuery, [userID, encryptedPMI, encryptedPMIPassword, encryptedZoomID, encryptedAccessToken], (err, result) => {
+        db.query(insertZoomInfoQuery, [userId, encryptedPMI, encryptedPMIPassword, encryptedZoomID, encryptedAccessToken], (err, result) => {
             if (err) {
                 console.error('Error updating Zoom info:', err);
                 return res.status(500).json({ message: 'Error updating Zoom info' });
@@ -91,17 +110,18 @@ router.get('/callback', async (req, res) => {
             console.log('Zoom info updated successfully');
         });
 
-        // Redirect back to frontend with PMI and password
+        // Redirect back to frontend with success parameters
         const params = new URLSearchParams({
             connected: 'true',
             pmi: userProfile.pmi,
             password: pmiPassword
         });
         
-        res.redirect(`/?${params.toString()}`);
+        // Redirect to the zoom-integration page with success parameters
+        res.redirect(`${process.env.CLIENT_URL}/zoom-integration?${params.toString()}`);
     } catch (error) {
         console.error('Zoom OAuth error:', error);
-        res.redirect('/?error=auth_failed');
+        res.redirect(`${process.env.CLIENT_URL}/zoom-integration?error=auth_failed`);
     }
 });
 

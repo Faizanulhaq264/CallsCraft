@@ -8,33 +8,53 @@ import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
 import { useAuth } from "../context/AuthContext"
 
-const { currentUser, isZoomIntegrated } = useAuth()
-
 const ZoomIntegrationPage = () => {
+  const { currentUser, isZoomIntegrated, setZoomIntegrated } = useAuth()
+  
   const [isIntegrating, setIsIntegrating] = useState(false)
   const [isIntegrated, setIsIntegrated] = useState(false)
-  const { setZoomIntegrated } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (isZoomIntegrated) {
-      setIsIntegrated(true)
+    console.log("ZoomIntegrationPage mounted, checking URL params");
+    // Check URL parameters for Zoom connection status
+    const urlParams = new URLSearchParams(window.location.search);
+    const connected = urlParams.get('connected');
+    const error = urlParams.get('error');
+    
+    console.log("URL params:", { connected, error });
+    
+    if (connected === 'true') {
+      console.log("Connected is true, updating Zoom integration status");
+      // Update Zoom integration status
+      setZoomIntegrated(true);
+      setIsIntegrated(true);
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error) {
+      console.log("Error in Zoom integration:", error);
+      // Handle error cases
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [isZoomIntegrated])
+    
+    // Check if already integrated
+    if (isZoomIntegrated) {
+      console.log("User is already Zoom integrated");
+      setIsIntegrated(true);
+    }
+  }, [isZoomIntegrated, setZoomIntegrated]);
 
   const handleIntegrateWithZoom = async () => {
     setIsIntegrating(true)
 
     try {
-      // Simulate API call to backend endpoint for Zoom authentication
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Update Zoom integration status in AuthContext
-      setZoomIntegrated(true);
-      setIsIntegrated(true)
+      // Redirect to Zoom auth endpoint with userId
+      window.location.href = `http://localhost:4000/api/auth/zoom?userId=${currentUser.id}`
     } catch (error) {
       console.error("Zoom integration error:", error)
-    } finally {
       setIsIntegrating(false)
     }
   }

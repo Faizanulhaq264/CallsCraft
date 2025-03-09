@@ -6,7 +6,14 @@ interface ZoomProtectedRouteProps {
 }
 
 const ZoomProtectedRoute = ({ children }: ZoomProtectedRouteProps) => {
-  const { currentUser, isZoomIntegrated } = useAuth();
+  const { currentUser, isZoomIntegrated, loading } = useAuth();
+
+  // If still loading auth state, show nothing or a loading spinner
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+    </div>;
+  }
 
   // If not logged in, redirect to login
   if (!currentUser) {

@@ -51,19 +51,31 @@ function generateZoomToken(meetingNumber, role) {
 /* =================================================================================== */
 // Encryption function
 function encrypt(text) {
-    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(process.env.ENCRYPTION_KEY), Buffer.from(process.env.IV));
-    let encrypted = cipher.update(text);
-    encrypted = Buffer.concat([encrypted, cipher.final()]);
-    return encrypted.toString('hex');
+    // Convert text to string if it's not already
+    const textString = String(text);
+    
+    // Get encryption key and IV from environment variables
+    const key = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+    const iv = Buffer.from(process.env.IV, 'hex');
+    
+    // Create cipher and encrypt
+    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+    let encrypted = cipher.update(textString, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return encrypted;
 }
 
 // Decryption function
 function decrypt(text) {
-    const encryptedText = Buffer.from(text, 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(process.env.ENCRYPTION_KEY), Buffer.from(process.env.IV));
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
+    // Get encryption key and IV from environment variables
+    const key = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+    const iv = Buffer.from(process.env.IV, 'hex');
+    
+    // Create decipher and decrypt
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    let decrypted = decipher.update(text, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
 }
 
 /* =================================================================================== */

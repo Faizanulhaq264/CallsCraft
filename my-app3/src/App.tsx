@@ -3,6 +3,7 @@ import { Suspense, lazy } from "react"
 import { AuthProvider } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
 import LoadingSpinner from "./components/LoadingSpinner"
+import ZoomProtectedRoute from "./components/ZoomProtectedRoute"
 
 // Lazy load pages for better performance
 const SignupPage = lazy(() => import("./pages/SignupPage"))
@@ -39,9 +40,9 @@ function App() {
           <Route
             path="/create-call"
             element={
-              <ProtectedRoute>
+              <ZoomProtectedRoute>
                 <CreateCallPage />
-              </ProtectedRoute>
+              </ZoomProtectedRoute>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />

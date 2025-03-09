@@ -16,6 +16,8 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  isZoomIntegrated: boolean;
+  setZoomIntegrated: (status: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -31,6 +33,18 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  
+  // Check if the user has integrated with Zoom
+  const isZoomIntegrated = currentUser?.zoomIntegrated || false;
+  
+  // Method to update Zoom integration status
+  const setZoomIntegrated = (status: boolean) => {
+    if (currentUser) {
+      const updatedUser = { ...currentUser, zoomIntegrated: status };
+      setCurrentUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    }
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -75,7 +89,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, signup, logout, loading }}>
+    <AuthContext.Provider value={{ 
+      currentUser, 
+      login, 
+      signup, 
+      logout, 
+      loading, 
+      isZoomIntegrated, 
+      setZoomIntegrated 
+    }}>
       {children}
     </AuthContext.Provider>
   );

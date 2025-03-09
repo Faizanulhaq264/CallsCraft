@@ -1,16 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import Button from "../components/Button"
 import Card from "../components/Card"
 import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
+import { useAuth } from "../context/AuthContext"
+
+const { currentUser, isZoomIntegrated } = useAuth()
 
 const ZoomIntegrationPage = () => {
   const [isIntegrating, setIsIntegrating] = useState(false)
   const [isIntegrated, setIsIntegrated] = useState(false)
+  const { setZoomIntegrated } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (isZoomIntegrated) {
+      setIsIntegrated(true)
+    }
+  }, [isZoomIntegrated])
 
   const handleIntegrateWithZoom = async () => {
     setIsIntegrating(true)
@@ -19,14 +29,8 @@ const ZoomIntegrationPage = () => {
       // Simulate API call to backend endpoint for Zoom authentication
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      // Update user in localStorage to reflect Zoom integration
-      const storedUser = localStorage.getItem("user")
-      if (storedUser) {
-        const user = JSON.parse(storedUser)
-        user.zoomIntegrated = true
-        localStorage.setItem("user", JSON.stringify(user))
-      }
-
+      // Update Zoom integration status in AuthContext
+      setZoomIntegrated(true);
       setIsIntegrated(true)
     } catch (error) {
       console.error("Zoom integration error:", error)

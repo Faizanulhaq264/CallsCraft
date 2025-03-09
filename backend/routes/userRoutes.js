@@ -117,9 +117,10 @@ router.post('/login', (req, res) => {
 
             res.json({
                 message: 'User logged in successfully',
-                userID: user.UserID,
+                id: user.UserID,
                 name: user.Name,
-                email: user.Email
+                email: user.Email,
+                crmID: user.CRMID
             });
         });
     });

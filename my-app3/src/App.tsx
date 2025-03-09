@@ -19,36 +19,29 @@ function App() {
         <Routes>
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <HomePage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<HomePage />} />
           <Route
             path="/zoom-integration"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <ZoomIntegrationPage />
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           />
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <DashboardPage />
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           />
           <Route
             path="/create-call"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <CreateCallPage />
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext"
 import Button from "../components/Button"
 import Input from "../components/Input"
 import Card from "../components/Card"
+import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
 
 const CreateCallPage = () => {
@@ -15,7 +16,7 @@ const CreateCallPage = () => {
   const [clientName, setClientName] = useState("")
   const [isStartingCall, setIsStartingCall] = useState(false)
   const [error, setError] = useState("")
-  const { currentUser, logout } = useAuth()
+  const { currentUser } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmitClientName = (e: React.FormEvent) => {
@@ -50,23 +51,9 @@ const CreateCallPage = () => {
   return (
     <PageTransition>
       <div className="min-h-screen">
-        <header className="bg-black border-b border-gray-800 shadow-lg">
-          <div className="container mx-auto px-4 py-6 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-white flex items-center">
-              <span className="bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-                CallsCraft
-              </span>
-            </h1>
-            <div className="flex items-center gap-4">
-              <span className="text-gray-300">Welcome, {currentUser?.name || "User"}</span>
-              <Button variant="secondary" onClick={logout}>
-                Logout
-              </Button>
-            </div>
-          </div>
-        </header>
+        <Navbar />
 
-        <main className="container mx-auto px-4 py-12">
+        <main className="container mx-auto px-4 py-12 pt-24">
           <div className="max-w-2xl mx-auto">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-3xl font-bold">Create Call</h2>
@@ -80,26 +67,26 @@ const CreateCallPage = () => {
                 <div className="flex items-center mb-8">
                   <div
                     className={`
-    flex items-center justify-center w-10 h-10 rounded-full 
-    ${step >= 1 ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-800"} 
-    text-white font-bold transition-all duration-300
-  `}
+                    flex items-center justify-center w-10 h-10 rounded-full 
+                    ${step >= 1 ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-800"} 
+                    text-white font-bold transition-all duration-300
+                  `}
                   >
                     1
                   </div>
                   <div
                     className={`
-    flex-1 h-1 mx-2 
-    ${step >= 2 ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-800"}
-    transition-all duration-500
-  `}
+                    flex-1 h-1 mx-2 
+                    ${step >= 2 ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-800"}
+                    transition-all duration-500
+                  `}
                   ></div>
                   <div
                     className={`
-    flex items-center justify-center w-10 h-10 rounded-full 
-    ${step >= 2 ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-800"} 
-    text-white font-bold transition-all duration-300
-  `}
+                    flex items-center justify-center w-10 h-10 rounded-full 
+                    ${step >= 2 ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-800"} 
+                    text-white font-bold transition-all duration-300
+                  `}
                   >
                     2
                   </div>

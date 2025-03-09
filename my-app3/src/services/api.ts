@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:4000/api';
+const API_URL = 'http://localhost:4000/api';      //change the port number to the port number of the server.js script running on backend
 
 export const apiService = {
   // User authentication

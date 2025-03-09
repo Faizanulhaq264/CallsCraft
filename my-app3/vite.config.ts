@@ -10,5 +10,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  css: {
+    // Enable CSS modules
+    modules: {
+      localsConvention: "camelCase",
+    },
+    // Enable PostCSS processing
+    postcss: "./postcss.config.js",
+  },
 })
 

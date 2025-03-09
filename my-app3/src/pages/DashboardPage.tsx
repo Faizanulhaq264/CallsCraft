@@ -3,10 +3,11 @@
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import Button from "../components/Button"
+import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
 
 const DashboardPage = () => {
-  const { currentUser, logout } = useAuth()
+  const { currentUser } = useAuth()
   const navigate = useNavigate()
 
   // Mock data for dashboard
@@ -19,23 +20,9 @@ const DashboardPage = () => {
   return (
     <PageTransition>
       <div className="min-h-screen">
-        <header className="bg-black border-b border-gray-800 shadow-lg">
-          <div className="container mx-auto px-4 py-6 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-white flex items-center">
-              <span className="bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-                CallsCraft
-              </span>
-            </h1>
-            <div className="flex items-center gap-4">
-              <span className="text-gray-300">Welcome, {currentUser?.name || "User"}</span>
-              <Button variant="secondary" onClick={logout}>
-                Logout
-              </Button>
-            </div>
-          </div>
-        </header>
+        <Navbar />
 
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-8 pt-24">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-3xl font-bold">Dashboard</h2>
             <Button onClick={() => navigate("/create-call")}>Create New Call</Button>

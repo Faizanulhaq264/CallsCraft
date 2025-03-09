@@ -8,7 +8,7 @@ const saltRounds = 10;
 
 // User Sign Up
 router.post('/signup', (req, res) => {
-    const { name, email, password } = req.body;
+    const { email, password, name } = req.body;
 
     // Validate the email
     if (!isEmailValid(email)) {
@@ -42,23 +42,42 @@ router.post('/signup', (req, res) => {
                 return res.status(500).json({ message: 'Error signing up user' });
             }
 
-            const insertUserQuery = `
-                INSERT INTO User (Name, Email, Password)
-                VALUES (?, ?, ?);
+            // First, create a default CRM entry for the user
+            const insertCRMQuery = `
+                INSERT INTO CRM (CRMName)
+                VALUES (?);
             `;
 
-            db.query(insertUserQuery, [name, email, hashedPassword], (err, result) => {
+            db.query(insertCRMQuery, [`${name}'s CRM`], (err, crmResult) => {
                 if (err) {
-                    console.error('Error signing up user (FROM signup ENDPOINT):', err);
-                    return res.status(500).json({ message: 'Error signing up user (FROM signup ENDPOINT)' });
+                    console.error('Error creating CRM (FROM signup ENDPOINT):', err);
+                    return res.status(500).json({ message: 'Error creating CRM for user' });
                 }
 
-                console.log('User signed up:', result);
+                const crmID = crmResult.insertId;  // Get the generated CRMID
 
-                const userID = result.insertId;  // Get the generated UserID
-                res.json({
-                    message: 'User signed up successfully',
-                    userID: userID
+                // Now insert the user with the CRMID
+                const insertUserQuery = `
+                    INSERT INTO User (Name, Email, Password, CRMID)
+                    VALUES (?, ?, ?, ?);
+                `;
+
+                db.query(insertUserQuery, [name, email, hashedPassword, crmID], (err, result) => {
+                    if (err) {
+                        console.error('Error signing up user (FROM signup ENDPOINT):', err);
+                        return res.status(500).json({ message: 'Error signing up user (FROM signup ENDPOINT)' });
+                    }
+
+                    console.log('User signed up:', result);
+
+                    const userID = result.insertId;  // Get the generated UserID
+                    res.json({
+                        message: 'User signed up successfully',
+                        id: userID,
+                        name: name,
+                        email: email,
+                        crmID: crmID
+                    });
                 });
             });
         });

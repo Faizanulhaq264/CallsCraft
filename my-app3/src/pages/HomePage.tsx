@@ -1,102 +1,331 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import Button from "../components/Button"
+import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
 
-const HomePage = () => {
-  const { currentUser, logout } = useAuth()
-  const navigate = useNavigate()
+// Define the sections for our scrolling content
+const sections = [
+  {
+    id: "hero",
+    title: "Seamless Video Calls",
+    subtitle: "Connect with clients effortlessly through our Zoom integration",
+    image: "/placeholder.svg?height=600&width=800",
+    imageAlt: "Video call interface",
+    position: "right",
+  },
+  {
+    id: "features",
+    title: "Powerful Features",
+    subtitle: "Everything you need to manage your client communications",
+    image: "/placeholder.svg?height=600&width=800",
+    imageAlt: "Dashboard features",
+    position: "left",
+  },
+  {
+    id: "analytics",
+    title: "Detailed Analytics",
+    subtitle: "Track your call history and performance metrics",
+    image: "/placeholder.svg?height=600&width=800",
+    imageAlt: "Analytics dashboard",
+    position: "right",
+  },
+  {
+    id: "security",
+    title: "Enterprise Security",
+    subtitle: "Your data is protected with end-to-end encryption",
+    image: "/placeholder.svg?height=600&width=800",
+    imageAlt: "Security features",
+    position: "left",
+  },
+]
 
+const HomePage = () => {
+  const { currentUser } = useAuth()
+  const navigate = useNavigate()
+  const [activeSection, setActiveSection] = useState("hero")
+  const sectionRefs = useRef<{ [key: string]: HTMLElement | null }>({})
+
+  // Set up intersection observer to detect when sections are in view
   useEffect(() => {
-    // If currentUser hasn't integrated with Zoom, redirect to Zoom integration page
-    if (currentUser && !currentUser.zoomIntegrated) {
-      navigate("/zoom-integration")
+    const observerOptions = {
+      root: null,
+      rootMargin: "-50% 0px",
+      threshold: 0,
     }
-  }, [currentUser, navigate])
+
+    const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setActiveSection(entry.target.id)
+        }
+      })
+    }
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions)
+
+    // Observe all section elements
+    Object.values(sectionRefs.current).forEach((ref) => {
+      if (ref) observer.observe(ref)
+    })
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
 
   return (
     <PageTransition>
       <div className="min-h-screen">
-        <header className="bg-black border-b border-gray-800 shadow-lg">
-          <div className="container mx-auto px-4 py-6 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-white flex items-center">
-              <span className="bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-                CallsCraft
-              </span>
-            </h1>
-            <div className="flex items-center gap-4">
-              <span className="text-gray-300">Welcome, {currentUser?.name || "User"}</span>
-              <Button variant="secondary" onClick={logout}>
-                Logout
-              </Button>
+        <Navbar />
+
+        {/* Hero Section */}
+        <section
+          id="hero"
+          ref={(el) => (sectionRefs.current["hero"] = el)}
+          className="min-h-screen pt-20 flex flex-col justify-center relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-radial from-purple-900/10 to-transparent"></div>
+          <div className="container mx-auto px-4 py-12 flex flex-col md:flex-row items-center">
+            <div
+              className={`md:w-1/2 mb-8 md:mb-0 transition-all duration-1000 transform ${
+                activeSection === "hero" ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
+              }`}
+            >
+              <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                Professional Video Calls Made Simple
+              </h1>
+              <p className="text-xl text-gray-300 mb-8">
+                Connect with your clients through seamless Zoom integration. Schedule, manage, and analyze your calls
+                all in one place.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                {currentUser ? (
+                  <>
+                    <Button onClick={() => navigate("/dashboard")}>Go to Dashboard</Button>
+                    <Button variant="secondary" onClick={() => navigate("/create-call")}>
+                      Start a Call
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button onClick={() => navigate("/signup")}>Get Started</Button>
+                    <Button variant="secondary" onClick={() => navigate("/login")}>
+                      Log In
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+            <div
+              className={`md:w-1/2 transition-all duration-1000 transform ${
+                activeSection === "hero" ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"
+              }`}
+            >
+              <div className="relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-lg blur opacity-30"></div>
+                <img
+                  src="/placeholder.svg?height=600&width=800"
+                  alt="Video call interface"
+                  className="w-full h-auto rounded-lg relative z-10 border border-gray-800"
+                />
+              </div>
             </div>
           </div>
-        </header>
+        </section>
 
-        <main className="container mx-auto px-4 py-12">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-                Welcome to CallsCraft
-              </span>
-            </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Your platform for seamless Zoom call management and scheduling
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div
-              className="bg-gradient-to-br from-gray-900 to-black border border-purple-900/30 rounded-xl p-6 shadow-lg hover:shadow-purple-900/20 hover:translate-y-[-5px] transition-all duration-300 cursor-pointer"
-              onClick={() => navigate("/dashboard")}
-            >
-              <div className="text-center">
-                <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-700/30">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-8 w-8 text-purple-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+        {/* Scrolling Sections */}
+        {sections.slice(1).map((section) => (
+          <section
+            key={section.id}
+            id={section.id}
+            ref={(el) => (sectionRefs.current[section.id] = el)}
+            className="min-h-screen flex items-center relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-radial from-purple-900/10 to-transparent opacity-50"></div>
+            <div className="container mx-auto px-4 py-12">
+              <div
+                className={`flex flex-col ${
+                  section.position === "left" ? "md:flex-row" : "md:flex-row-reverse"
+                } items-center`}
+              >
+                <div
+                  className={`md:w-1/2 mb-8 md:mb-0 transition-all duration-1000 transform ${
+                    activeSection === section.id ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
+                  }`}
+                >
+                  <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                    {section.title}
+                  </h2>
+                  <p className="text-xl text-gray-300 mb-8">{section.subtitle}</p>
+                  <div className="space-y-4">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-lg font-medium text-white">Feature Point 1</h3>
+                        <p className="mt-1 text-gray-400">Detailed description of this amazing feature</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-lg font-medium text-white">Feature Point 2</h3>
+                        <p className="mt-1 text-gray-400">Another great feature explained in detail</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  className={`md:w-1/2 transition-all duration-1000 transform ${
+                    activeSection === section.id
+                      ? "opacity-100 translate-x-0"
+                      : section.position === "left"
+                        ? "opacity-0 translate-x-10"
+                        : "opacity-0 translate-x-[-10px]"
+                  }`}
+                >
+                  <div className="relative">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-lg blur opacity-30"></div>
+                    <img
+                      src={section.image || "/placeholder.svg"}
+                      alt={section.imageAlt}
+                      className="w-full h-auto rounded-lg relative z-10 border border-gray-800"
                     />
-                  </svg>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold mb-2 text-white">View Dashboard</h3>
-                <p className="text-gray-400">Access your call history, analytics, and scheduled calls</p>
               </div>
             </div>
+          </section>
+        ))}
 
-            <div
-              className="bg-gradient-to-br from-gray-900 to-black border border-cyan-900/30 rounded-xl p-6 shadow-lg hover:shadow-cyan-900/20 hover:translate-y-[-5px] transition-all duration-300 cursor-pointer"
-              onClick={() => navigate("/create-call")}
-            >
-              <div className="text-center">
-                <div className="bg-gradient-to-br from-cyan-900/30 to-cyan-800/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-cyan-700/30">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-8 w-8 text-cyan-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
+        {/* CTA Section */}
+        <section className="py-20 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-black to-purple-900/20"></div>
+          <div className="container mx-auto px-4 text-center relative z-10">
+            <h2 className="text-4xl font-bold mb-6 bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+              Ready to Transform Your Client Calls?
+            </h2>
+            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+              Join thousands of professionals who use CallsCraft to manage their client communications efficiently.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {currentUser ? (
+                <Button onClick={() => navigate("/create-call")} className="px-8 py-4 text-lg">
+                  Start a Call Now
+                </Button>
+              ) : (
+                <Button onClick={() => navigate("/signup")} className="px-8 py-4 text-lg">
+                  Get Started for Free
+                </Button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="bg-black border-t border-gray-800 py-12">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col md:flex-row justify-between">
+              <div className="mb-8 md:mb-0">
+                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                  CallsCraft
+                </h3>
+                <p className="text-gray-400 max-w-md">
+                  Professional video calling platform with Zoom integration for seamless client communications.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+                <div>
+                  <h4 className="text-white font-medium mb-4">Product</h4>
+                  <ul className="space-y-2">
+                    <li>
+                      <a href="#" className="text-gray-400 hover:text-white">
+                        Features
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" className="text-gray-400 hover:text-white">
+                        Pricing
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" className="text-gray-400 hover:text-white">
+                        Integrations
+                      </a>
+                    </li>
+                  </ul>
                 </div>
-                <h3 className="text-xl font-bold mb-2 text-white">Create Call</h3>
-                <p className="text-gray-400">Start a new Zoom call with a client</p>
+                <div>
+                  <h4 className="text-white font-medium mb-4">Resources</h4>
+                  <ul className="space-y-2">
+                    <li>
+                      <a href="#" className="text-gray-400 hover:text-white">
+                        Documentation
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" className="text-gray-400 hover:text-white">
+                        Tutorials
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" className="text-gray-400 hover:text-white">
+                        Blog
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-white font-medium mb-4">Company</h4>
+                  <ul className="space-y-2">
+                    <li>
+                      <a href="#" className="text-gray-400 hover:text-white">
+                        About
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" className="text-gray-400 hover:text-white">
+                        Careers
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" className="text-gray-400 hover:text-white">
+                        Contact
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+              <p className="text-gray-500 mb-4 md:mb-0">
+                &copy; {new Date().getFullYear()} CallsCraft. All rights reserved.
+              </p>
+              <div className="flex space-x-6">
+                <a href="#" className="text-gray-400 hover:text-white">
+                  Terms
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white">
+                  Privacy
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white">
+                  Cookies
+                </a>
               </div>
             </div>
           </div>
-        </main>
+        </footer>
       </div>
     </PageTransition>
   )

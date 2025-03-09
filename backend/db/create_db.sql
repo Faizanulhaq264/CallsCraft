@@ -108,10 +108,10 @@ CREATE TABLE Note (
 CREATE TABLE UserZoomSettings (
     SettingID INT PRIMARY KEY AUTO_INCREMENT,
     UserID INT UNIQUE,
-    PMI VARCHAR(255),
-    PMI_Password VARCHAR(255),
-    ZoomID VARCHAR(255),
-    ZoomAccessToken VARCHAR(255),
+    PMI TEXT,
+    PMI_Password TEXT,
+    ZoomID TEXT,
+    ZoomAccessToken TEXT,
     FOREIGN KEY (UserID) REFERENCES User(UserID)
 );
 

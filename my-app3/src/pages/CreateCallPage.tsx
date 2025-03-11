@@ -10,10 +10,18 @@ import Input from "../components/Input"
 import Card from "../components/Card"
 import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
+import { PlusCircle, X } from "lucide-react"
+
+// Define a type for accomplishments
+interface Accomplishment {
+  id: string
+  text: string
+}
 
 const CreateCallPage = () => {
   const [step, setStep] = useState(1)
   const [clientName, setClientName] = useState("")
+  const [accomplishments, setAccomplishments] = useState<Accomplishment[]>([{ id: "1", text: "" }])
   const [isStartingCall, setIsStartingCall] = useState(false)
   const [error, setError] = useState("")
   const { currentUser } = useAuth()
@@ -31,15 +39,58 @@ const CreateCallPage = () => {
     setStep(2)
   }
 
+  const handleSubmitAccomplishments = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Validate that at least one accomplishment has text
+    const hasValidAccomplishment = accomplishments.some((a) => a.text.trim() !== "")
+
+    if (!hasValidAccomplishment) {
+      setError("Please enter at least one accomplishment")
+      return
+    }
+
+    setError("")
+    setStep(3)
+  }
+
+  const handleAccomplishmentChange = (id: string, value: string) => {
+    setAccomplishments((prev) => prev.map((a) => (a.id === id ? { ...a, text: value } : a)))
+  }
+
+  const addAccomplishment = () => {
+    setAccomplishments((prev) => [...prev, { id: Date.now().toString(), text: "" }])
+  }
+
+  const removeAccomplishment = (id: string) => {
+    // Don't remove if it's the last one
+    if (accomplishments.length <= 1) return
+
+    setAccomplishments((prev) => prev.filter((a) => a.id !== id))
+  }
+
   const handleStartCall = async () => {
     setIsStartingCall(true)
 
     try {
-      // Simulate API call to backend endpoint to start the call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Filter out empty accomplishments
+      const validAccomplishments = accomplishments.filter((a) => a.text.trim() !== "").map((a) => a.text)
 
-      // Redirect to a success page or show success message
-      navigate("/dashboard")
+      // Store call data in localStorage for use in other pages
+      localStorage.setItem(
+        "callData",
+        JSON.stringify({
+          clientName,
+          accomplishments: validAccomplishments,
+          timestamp: new Date().toISOString(),
+        }),
+      )
+
+      // Simulate API call to backend endpoint to start the call
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      // Navigate to the call page
+      navigate("/active-call")
     } catch (error) {
       console.error("Failed to start call:", error)
       setError("Failed to start the call. Please try again.")
@@ -90,6 +141,22 @@ const CreateCallPage = () => {
                   >
                     2
                   </div>
+                  <div
+                    className={`
+                    flex-1 h-1 mx-2 
+                    ${step >= 3 ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-800"}
+                    transition-all duration-500
+                  `}
+                  ></div>
+                  <div
+                    className={`
+                    flex items-center justify-center w-10 h-10 rounded-full 
+                    ${step >= 3 ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-800"} 
+                    text-white font-bold transition-all duration-300
+                  `}
+                  >
+                    3
+                  </div>
                 </div>
 
                 {step === 1 ? (
@@ -116,11 +183,11 @@ const CreateCallPage = () => {
                       </Button>
                     </form>
                   </div>
-                ) : (
-                  <div className="animate-fadeIn text-center">
-                    <h3 className="text-xl font-bold mb-4">Start Call</h3>
+                ) : step === 2 ? (
+                  <div className="animate-fadeIn">
+                    <h3 className="text-xl font-bold mb-4">Today's Accomplishments</h3>
                     <p className="text-gray-400 mb-6">
-                      You're about to start a call with <span className="text-white font-medium">{clientName}</span>
+                      What would you like to accomplish in today's call with {clientName}?
                     </p>
 
                     {error && (
@@ -129,20 +196,90 @@ const CreateCallPage = () => {
                       </div>
                     )}
 
-                    <Button onClick={handleStartCall} disabled={isStartingCall} className="px-8 py-4 text-lg">
-                      {isStartingCall ? (
-                        <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-3"></div>
-                          Starting Call...
-                        </div>
-                      ) : (
-                        <>Start Call</>
-                      )}
-                    </Button>
+                    <form onSubmit={handleSubmitAccomplishments}>
+                      <div className="space-y-4 mb-6">
+                        {accomplishments.map((accomplishment, index) => (
+                          <div key={accomplishment.id} className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <Input
+                                placeholder={`Accomplishment ${index + 1}`}
+                                value={accomplishment.text}
+                                onChange={(e) => handleAccomplishmentChange(accomplishment.id, e.target.value)}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeAccomplishment(accomplishment.id)}
+                              className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                              aria-label="Remove accomplishment"
+                              disabled={accomplishments.length <= 1}
+                            >
+                              <X className="h-5 w-5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
 
-                    <button className="block mx-auto mt-4 text-gray-400 hover:text-white" onClick={() => setStep(1)}>
-                      Go Back
-                    </button>
+                      <div className="flex justify-between">
+                        <button
+                          type="button"
+                          onClick={addAccomplishment}
+                          className="flex items-center gap-2 text-purple-500 hover:text-purple-400 transition-colors"
+                        >
+                          <PlusCircle className="h-5 w-5" />
+                          <span>Add Another</span>
+                        </button>
+                      </div>
+
+                      <div className="flex justify-between mt-6">
+                        <Button type="button" variant="secondary" onClick={() => setStep(1)}>
+                          Back
+                        </Button>
+                        <Button type="submit">Continue</Button>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  <div className="animate-fadeIn text-center">
+                    <h3 className="text-xl font-bold mb-4">Start Call</h3>
+                    <p className="text-gray-400 mb-6">
+                      You're about to start a call with <span className="text-white font-medium">{clientName}</span>
+                    </p>
+
+                    <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 mb-6 text-left">
+                      <h4 className="text-md font-medium mb-2">Today's Accomplishments:</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {accomplishments
+                          .filter((a) => a.text.trim() !== "")
+                          .map((a, index) => (
+                            <li key={index} className="text-gray-300">
+                              {a.text}
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+
+                    {error && (
+                      <div className="bg-red-900/50 border border-red-500 text-red-300 px-4 py-3 rounded mb-4">
+                        {error}
+                      </div>
+                    )}
+
+                    <div className="flex justify-between">
+                      <Button variant="secondary" onClick={() => setStep(2)}>
+                        Back
+                      </Button>
+                      <Button onClick={handleStartCall} disabled={isStartingCall} className="px-8 py-4 text-lg">
+                        {isStartingCall ? (
+                          <div className="flex items-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-3"></div>
+                            Starting Call...
+                          </div>
+                        ) : (
+                          <>Start Call</>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

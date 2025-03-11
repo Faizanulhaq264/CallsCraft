@@ -4,6 +4,8 @@ import { AuthProvider } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
 import LoadingSpinner from "./components/LoadingSpinner"
 import ZoomProtectedRoute from "./components/ZoomProtectedRoute"
+const ActiveCallPage = lazy(() => import("./pages/ActiveCallPage"))
+const CallSummaryPage = lazy(() => import("./pages/CallSummaryPage"))
 
 // Lazy load pages for better performance
 const SignupPage = lazy(() => import("./pages/SignupPage"))
@@ -45,6 +47,22 @@ function App() {
               </ZoomProtectedRoute>
             }
           />
+          <Route
+            path="/active-call"
+            element={
+              <ZoomProtectedRoute>
+                <ActiveCallPage />
+              </ZoomProtectedRoute>
+            }
+          />
+          <Route
+            path="/call-summary"
+            element={
+              <ZoomProtectedRoute>
+                <CallSummaryPage />
+              </ZoomProtectedRoute>
+            }
+          />          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

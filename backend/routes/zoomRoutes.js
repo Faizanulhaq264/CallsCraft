@@ -125,4 +125,42 @@ router.get('/callback', async (req, res) => {
     }
 });
 
+// Get user's Zoom meeting credentials from the database & Decrypts the credentials
+router.get('/meeting-credentials/:userId', (req, res) => {
+    const { userId } = req.params;
+    console.log("\n\nUser ID:", userId);
+    if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+    }
+    
+    // Query to get the user's Zoom settings
+    const query = 'SELECT PMI, PMI_Password FROM UserZoomSettings WHERE UserID = ?';
+    
+    db.query(query, [userId], (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Error fetching Zoom credentials' });
+        }
+        
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'Zoom credentials not found. Please connect your Zoom account first.' });
+        }
+        
+        // Decrypt the credentials
+        try {
+            const pmi = decrypt(results[0].PMI);
+            const password = decrypt(results[0].PMI_Password);
+            console.log('Decrypted PMI:', pmi);
+            console.log('Decrypted Password:', password);
+            res.json({
+                meetingNumber: pmi,
+                password: password
+            });
+        } catch (error) {
+            console.error('Decryption error:', error);
+            return res.status(500).json({ message: 'Error decrypting Zoom credentials' });
+        }
+    });
+});
+
 module.exports = router;

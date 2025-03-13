@@ -8,6 +8,8 @@ import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
 import { ChevronDown, ChevronUp, Mic, MicOff, Phone } from "lucide-react"
 import ZoomMtgEmbedded from "@zoom/meetingsdk/embedded";
+import { useAuth } from "../context/AuthContext"; // Adjust import path as needed
+import axios from "axios";
 // import { ZOOM_CONFIG } from "../config"; // Adjust path if needed
 
 // Mock transcription data
@@ -83,6 +85,12 @@ const ActiveCallPage = () => {
   const notesRef = useRef<HTMLTextAreaElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const gaugeTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const { currentUser } = useAuth();
+  const [meetingCredentials, setMeetingCredentials] = useState({
+    meetingNumber: "",
+    password: ""
+  });
+  const [isLoadingCredentials, setIsLoadingCredentials] = useState(true);
 
   // Initialize call data from localStorage
   const [callData, setCallData] = useState<{
@@ -91,6 +99,12 @@ const ActiveCallPage = () => {
   } | null>(null)
 
   async function startMeeting() {
+    // Don't proceed if credentials aren't loaded yet
+    if (isLoadingCredentials || !meetingCredentials.meetingNumber) {
+      console.error("Meeting credentials not loaded yet");
+      return;
+    }
+
     const meetingSDKElement = document.getElementById("zoomMeetingSDKElement")!;
     
     try {
@@ -100,10 +114,11 @@ const ActiveCallPage = () => {
         language: "en-US",
         customize:{
           video:{
+            isResizable: false,
             viewSizes:{
               default: {
                 width: 300,  // Adjusted to fit card
-                height: 450  // Adjusted to fit card
+                height: 750  // Adjusted to fit card
               }
             },
             popper:{
@@ -116,12 +131,14 @@ const ActiveCallPage = () => {
       });
       
       console.log("Client initialized, attempting to join...");
+      console.log("currentUser", currentUser);
+      console.log("currentUser.name", currentUser.name);
       await client.join({
         signature: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZGtLZXkiOiJKNFlrVHJFcVRIUzZsV09UYzl6RFlRIiwiYXBwS2V5IjoiSjRZa1RyRXFUSFM2bFdPVGM5ekRZUSIsIm1uIjo0OTU0MDAzMjg2LCJyb2xlIjoxLCJpYXQiOjE3NDE4ODkxNzIsImV4cCI6MTc0MTk3NTU3MiwidG9rZW5FeHAiOjE3NDE5NzU1NzJ9.dttYFkD757GL8QTLGY-fiN0Q_9h8zOoKSSDfF1oZRz0",
         sdkKey: "J4YkTrEqTHS6lWOTc9zDYQ",
-        meetingNumber: "4954003286",
-        password: "81txi9",
-        userName: "web SDKK",
+        meetingNumber: meetingCredentials.meetingNumber,
+        password: meetingCredentials.password,
+        userName: currentUser.name || "User",
         userEmail: '',
         tk: '',
         zak: '',
@@ -132,7 +149,24 @@ const ActiveCallPage = () => {
     }
   }
 
+  const fetchMeetingCredentials = async () => {
+    try {
+      setIsLoadingCredentials(true);
+      const response = await axios.get(`${'http://localhost:4000'}/api/meeting-credentials/${currentUser.id}`);
+      setMeetingCredentials(response.data);
+      setIsLoadingCredentials(false);
+    } catch (error) {
+      console.error("Error fetching meeting credentials:", error);
+      setIsLoadingCredentials(false);
+    }
+  };
+
   useEffect(() => {
+    // Fetch credentials when component mounts
+    if (currentUser) {
+      fetchMeetingCredentials();
+    }
+    
     // Get call data from localStorage
     const storedCallData = localStorage.getItem("callData")
     if (storedCallData) {
@@ -178,7 +212,7 @@ const ActiveCallPage = () => {
       if (gaugeTimerRef.current) clearInterval(gaugeTimerRef.current)
       clearInterval(transcriptionInterval)
     }
-  }, [])
+  }, [currentUser])
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -257,8 +291,12 @@ const ActiveCallPage = () => {
                   </button>
                 </div>
 
-                {isTranscriptionOpen && (
-                  <div className="max-h-96 overflow-y-auto pr-2 space-y-4">
+                <div 
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    isTranscriptionOpen ? "max-h-96" : "max-h-0 opacity-0"
+                  }`}
+                >
+                  <div className="pr-2 space-y-4">
                     {transcription.map((entry, index) => (
                       <div key={index} className="pb-3 border-b border-gray-800 last:border-0">
                         <div className="flex justify-between items-center mb-1">
@@ -273,7 +311,7 @@ const ActiveCallPage = () => {
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
               </Card>
 
               {/* Gauges */}
@@ -288,25 +326,31 @@ const ActiveCallPage = () => {
               </Card>
             </div>
 
-            {/* Right column - Zoom interface */}
+            {/* Right column - Zoom interface - with position fixed */}
             <div className="lg:col-span-1">
-              <Card className="h-full min-h-[600px] flex flex-col">
+              <Card className="h-full min-h-[600px] flex flex-col lg:sticky lg:top-24">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-medium">Zoom Interface</h3>
                   <Button
                     variant="secondary"
                     onClick={startMeeting}
                     className="text-sm"
+                    disabled={isLoadingCredentials}
                   >
-                    Reconnect
+                    {isLoadingCredentials ? "Loading..." : "Connect"}
                   </Button>
                 </div>
                 
                 <div 
                   id="zoomMeetingSDKElement" 
                   className="flex-grow bg-[#242424] rounded-lg overflow-hidden"
+                  style={{ height: "835px" }}
                 >
-                  {/* Zoom Meeting SDK Component View will be rendered here */}
+                  {isLoadingCredentials && (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-gray-400">Loading meeting credentials...</p>
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>

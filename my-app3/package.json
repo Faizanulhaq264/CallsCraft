@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@zoom/meetingsdk": "^3.11.0",
+    "axios": "^1.8.3",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.479.0",
     "react": "^18.2.0",

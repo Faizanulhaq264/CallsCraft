@@ -1,3 +1,8 @@
-1. integrate the /start-call endpoint when the call starts
-2. integrate the /end-call endpoint when call ends
-
+1. Call isnt joining zoom call if i go back and need to create a new call, 
+    need to refresh the page to do that which doesnt make sense
+2. We can maybe create a endpoint that ends users all current calls before starting a call
+3. Integrate accomplishments list into start call sequence
+    Do this by changing the data base to store each accomplishment as a new row but with its call id
+    This way we can differentiate whcih accomplishments belongs to which call
+4. Integrate end call endpoint
+    It might need changes due to the changing nature of the project

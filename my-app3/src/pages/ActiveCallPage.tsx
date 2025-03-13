@@ -7,6 +7,8 @@ import Card from "../components/Card"
 import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
 import { ChevronDown, ChevronUp, Mic, MicOff, Phone } from "lucide-react"
+import ZoomMtgEmbedded from "@zoom/meetingsdk/embedded";
+// import { ZOOM_CONFIG } from "../config"; // Adjust path if needed
 
 // Mock transcription data
 const mockTranscription = [
@@ -63,6 +65,9 @@ const Gauge = ({ label, value, color }: { label: string; value: number; color: s
 }
 
 const ActiveCallPage = () => {
+  // Create Zoom client instance
+  const client = ZoomMtgEmbedded.createClient();
+  
   const [isTranscriptionOpen, setIsTranscriptionOpen] = useState(true)
   const [isMuted, setIsMuted] = useState(false)
   const [callTime, setCallTime] = useState(0)
@@ -84,6 +89,48 @@ const ActiveCallPage = () => {
     clientName: string
     accomplishments: string[]
   } | null>(null)
+
+  async function startMeeting() {
+    const meetingSDKElement = document.getElementById("zoomMeetingSDKElement")!;
+    
+    try {
+      console.log("Initializing client...");
+      await client.init({
+        zoomAppRoot: meetingSDKElement,
+        language: "en-US",
+        customize:{
+          video:{
+            viewSizes:{
+              default: {
+                width: 300,  // Adjusted to fit card
+                height: 450  // Adjusted to fit card
+              }
+            },
+            popper:{
+              disableDraggable: true
+            }
+          }
+        },
+        patchJsMedia: true,
+        leaveOnPageUnload: true,
+      });
+      
+      console.log("Client initialized, attempting to join...");
+      await client.join({
+        signature: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZGtLZXkiOiJKNFlrVHJFcVRIUzZsV09UYzl6RFlRIiwiYXBwS2V5IjoiSjRZa1RyRXFUSFM2bFdPVGM5ekRZUSIsIm1uIjo0OTU0MDAzMjg2LCJyb2xlIjoxLCJpYXQiOjE3NDE4ODkxNzIsImV4cCI6MTc0MTk3NTU3MiwidG9rZW5FeHAiOjE3NDE5NzU1NzJ9.dttYFkD757GL8QTLGY-fiN0Q_9h8zOoKSSDfF1oZRz0",
+        sdkKey: "J4YkTrEqTHS6lWOTc9zDYQ",
+        meetingNumber: "4954003286",
+        password: "81txi9",
+        userName: "web SDKK",
+        userEmail: '',
+        tk: '',
+        zak: '',
+      });
+      console.log("Joined successfully");
+    } catch (error) {
+      console.error("Error in Zoom meeting:", error);
+    }
+  }
 
   useEffect(() => {
     // Get call data from localStorage
@@ -121,6 +168,9 @@ const ActiveCallPage = () => {
     if (notesRef.current) {
       notesRef.current.focus()
     }
+
+    // Automatically start the Zoom meeting when component mounts
+    startMeeting();
 
     // Cleanup
     return () => {
@@ -240,29 +290,23 @@ const ActiveCallPage = () => {
 
             {/* Right column - Zoom interface */}
             <div className="lg:col-span-1">
-              <Card className="h-full min-h-[600px] flex items-center justify-center">
-                <div className="text-center">
-                  <div className="bg-gray-800 rounded-lg p-8 mb-4">
-                    <div className="w-32 h-32 bg-gray-700 rounded-full mx-auto flex items-center justify-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-16 w-16 text-gray-500"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-medium mb-2">Zoom Interface</h3>
-                  <p className="text-gray-400 mb-4">Your custom Zoom interface will be integrated here.</p>
-                  <div className="text-sm text-gray-500">Placeholder for Zoom SDK integration</div>
+              <Card className="h-full min-h-[600px] flex flex-col">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-medium">Zoom Interface</h3>
+                  <Button
+                    variant="secondary"
+                    onClick={startMeeting}
+                    className="text-sm"
+                  >
+                    Reconnect
+                  </Button>
+                </div>
+                
+                <div 
+                  id="zoomMeetingSDKElement" 
+                  className="flex-grow bg-[#242424] rounded-lg overflow-hidden"
+                >
+                  {/* Zoom Meeting SDK Component View will be rendered here */}
                 </div>
               </Card>
             </div>

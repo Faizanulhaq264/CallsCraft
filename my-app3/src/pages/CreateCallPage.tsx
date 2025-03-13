@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import axios from 'axios'; // Add this import at the top
 
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
@@ -70,34 +71,81 @@ const CreateCallPage = () => {
   }
 
   const handleStartCall = async () => {
-    setIsStartingCall(true)
-
+    setIsStartingCall(true);
+    setError("");
+  
     try {
       // Filter out empty accomplishments
-      const validAccomplishments = accomplishments.filter((a) => a.text.trim() !== "").map((a) => a.text)
-
+      const validAccomplishments = accomplishments
+        .filter((a) => a.text.trim() !== "")
+        .map((a) => a.text);
+  
+      if (!currentUser?.id) {
+        throw new Error("User not authenticated");
+      }
+  
+      // Step 1: Create client in the database
+      const createClientResponse = await axios.post(
+        `${'http://localhost:4000'}/api/create-client`, 
+        {
+          clientName,
+          userID: currentUser.id
+        }
+      );
+  
+      const clientID = createClientResponse.data.clientID;
+      
+      if (!clientID) {
+        throw new Error("Failed to create client");
+      }
+  
+      console.log("Client created successfully with ID:", clientID);
+  
+      // Step 2: Start the call in the database
+      const startCallResponse = await axios.post(
+        `${'http://localhost:4000'}/api/start-call`,
+        {
+          clientID,
+          userID: currentUser.id
+        }
+      );
+  
+      const callData = startCallResponse.data;
+      
+      if (!callData.callID) {
+        throw new Error("Failed to start call");
+      }
+  
+      console.log("Call started successfully:", callData);
+  
       // Store call data in localStorage for use in other pages
+      // Include both the user-entered data and the database IDs
       localStorage.setItem(
         "callData",
         JSON.stringify({
           clientName,
           accomplishments: validAccomplishments,
           timestamp: new Date().toISOString(),
-        }),
-      )
-
-      // Simulate API call to backend endpoint to start the call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
+          callID: callData.callID,
+          clientID: clientID,
+          transcriptName: callData.transcriptName,
+          startTime: callData.startTime
+        })
+      );
+  
       // Navigate to the call page
-      navigate("/active-call")
+      navigate("/active-call");
     } catch (error) {
-      console.error("Failed to start call:", error)
-      setError("Failed to start the call. Please try again.")
+      console.error("Failed to start call:", error);
+      setError(
+        error instanceof Error 
+          ? `Failed to start the call: ${error.message}` 
+          : "Failed to start the call. Please try again."
+      );
     } finally {
-      setIsStartingCall(false)
+      setIsStartingCall(false);
     }
-  }
+  };
 
   return (
     <PageTransition>

@@ -13,12 +13,14 @@
     "@zoom/meetingsdk": "^3.11.0",
     "axios": "^1.8.3",
     "framer-motion": "^10.16.4",
+    "jsrsasign": "^11.1.0",
     "lucide-react": "^0.479.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.18.0"
   },
   "devDependencies": {
+    "@types/jsrsasign": "^10.5.15",
     "@types/node": "^20.8.10",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",

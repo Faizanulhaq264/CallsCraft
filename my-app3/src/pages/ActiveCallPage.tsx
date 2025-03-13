@@ -10,7 +10,7 @@ import { ChevronDown, ChevronUp, Mic, MicOff, Phone } from "lucide-react"
 import ZoomMtgEmbedded from "@zoom/meetingsdk/embedded";
 import { useAuth } from "../context/AuthContext"; // Adjust import path as needed
 import axios from "axios";
-// import { ZOOM_CONFIG } from "../config"; // Adjust path if needed
+import { generateSignature, ZOOM_SDK_KEY, ZOOM_SDK_SECRET } from "../utils/zoomUtils";
 
 // Mock transcription data
 const mockTranscription = [
@@ -131,15 +131,22 @@ const ActiveCallPage = () => {
       });
       
       console.log("Client initialized, attempting to join...");
-      console.log("currentUser", currentUser);
-      console.log("currentUser.name", currentUser.name);
+      
+      // Generate a dynamic signature for this meeting
+      const signature = generateSignature(
+        ZOOM_SDK_KEY,
+        ZOOM_SDK_SECRET,
+        meetingCredentials.meetingNumber,
+        1 // Role 1 for host
+      );
+      console.log("Signature: ", signature)
       await client.join({
-        signature: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZGtLZXkiOiJKNFlrVHJFcVRIUzZsV09UYzl6RFlRIiwiYXBwS2V5IjoiSjRZa1RyRXFUSFM2bFdPVGM5ekRZUSIsIm1uIjo0OTU0MDAzMjg2LCJyb2xlIjoxLCJpYXQiOjE3NDE4ODkxNzIsImV4cCI6MTc0MTk3NTU3MiwidG9rZW5FeHAiOjE3NDE5NzU1NzJ9.dttYFkD757GL8QTLGY-fiN0Q_9h8zOoKSSDfF1oZRz0",
-        sdkKey: "J4YkTrEqTHS6lWOTc9zDYQ",
+        signature: signature,
+        sdkKey: ZOOM_SDK_KEY,
         meetingNumber: meetingCredentials.meetingNumber,
         password: meetingCredentials.password,
         userName: currentUser.name || "User",
-        userEmail: '',
+        userEmail: currentUser.email || '',
         tk: '',
         zak: '',
       });

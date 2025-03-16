@@ -7,8 +7,10 @@ const router = express.Router();
 /* ============================================================= */
 // Endpoint to start the Zoom bot
 router.post('/start-zoom-bot', (req, res) => {
+    const { meetingNumber, password } = req.body;
+    
     const command = `
-        docker run -it --rm \
+        docker run -d --rm \
         -p 8180:8180 \
         -p 8080:8080 \
         --name zoom-sdk-container \
@@ -18,15 +20,31 @@ router.post('/start-zoom-bot', (req, res) => {
     exec(command, (error, stdout, stderr) => {
         if (error) {
             console.error(`Error starting Zoom bot: ${error.message}`);
-            return res.status(500).json({ message: 'Error starting Zoom bot' });
+            return res.status(500).json({ success: false, error: error.message });
         }
 
         if (stderr) {
             console.error(`Zoom bot stderr: ${stderr}`);
         }
 
-        console.log(`Zoom bot stdout: ${stdout}`);
-        res.json({ message: 'Zoom bot started successfully' });
+        console.log(`Zoom bot started successfully: ${stdout}`);
+        res.status(200).json({ success: true, containerId: stdout.trim() });
+    });
+});
+
+/* ============================================================= */
+// Endpoint to stop the Zoom bot
+router.post('/stop-zoom-bot', (req, res) => {
+    const command = `docker stop zoom-sdk-container`;
+    
+    exec(command, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error stopping Zoom bot: ${error}`);
+            return res.status(500).json({ success: false, error: error.message });
+        }
+        
+        console.log(`Zoom bot stopped successfully: ${stdout}`);
+        return res.status(200).json({ success: true });
     });
 });
 

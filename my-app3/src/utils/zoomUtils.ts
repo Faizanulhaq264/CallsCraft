@@ -1,4 +1,5 @@
 import { KJUR } from 'jsrsasign';
+import axios from 'axios';
 
 /**
  * Generates a JWT signature for Zoom Meeting SDK authentication
@@ -38,7 +39,39 @@ export function generateSignature(
   return KJUR.jws.JWS.sign('HS256', sHeader, sPayload, sdkSecret);
 }
 
+/**
+ * Start the Zoom bot docker container
+ * @param meetingNumber - The meeting number to join
+ * @param password - The meeting password
+ * @returns Promise resolving to the API response
+ */
+export async function startZoomBot(meetingNumber: string, password: string): Promise<{success: boolean; error?: string; containerId?: string}> {
+  try {
+    const response = await axios.post('http://localhost:4000/api/start-zoom-bot', {
+      meetingNumber,
+      password
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error starting Zoom bot:', error);
+    return { success: false, error: (error as any).message };
+  }
+}
+
+/**
+ * Stop the running Zoom bot docker container
+ * @returns Promise resolving to the API response
+ */
+export async function stopZoomBot(): Promise<{success: boolean; error?: string}> {
+  try {
+    const response = await axios.post('http://localhost:4000/api/stop-zoom-bot');
+    return response.data;
+  } catch (error) {
+    console.error('Error stopping Zoom bot:', error);
+    return { success: false, error: (error as any).message };
+  }
+}
+
 // Environment variable constants for Zoom credentials
-// These should be set in your .env file
 export const ZOOM_SDK_KEY = 'J4YkTrEqTHS6lWOTc9zDYQ'; // Replace with your environment variable setup
 export const ZOOM_SDK_SECRET = 'l0LeSguzPN8sHLaucxAdhcEXkpRV6VOD'; // Replace with your environment variable setup

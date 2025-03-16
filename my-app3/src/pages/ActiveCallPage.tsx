@@ -10,7 +10,7 @@ import { ChevronDown, ChevronUp, Mic, MicOff, Phone } from "lucide-react"
 import ZoomMtgEmbedded from "@zoom/meetingsdk/embedded";
 import { useAuth } from "../context/AuthContext"; // Adjust import path as needed
 import axios from "axios";
-import { generateSignature, ZOOM_SDK_KEY, ZOOM_SDK_SECRET } from "../utils/zoomUtils";
+import { generateSignature, ZOOM_SDK_KEY, ZOOM_SDK_SECRET, startZoomBot, stopZoomBot } from "../utils/zoomUtils";
 
 // Mock transcription data
 const mockTranscription = [
@@ -83,6 +83,8 @@ const ActiveCallPage = () => {
   })
   const [participantCount, setParticipantCount] = useState(0);
   const [isBotJoinable, setIsBotJoinable] = useState(false);
+  const [botActive, setBotActive] = useState(false);
+  const [isBotJoining, setIsBotJoining] = useState(false);
   const navigate = useNavigate()
   const notesRef = useRef<HTMLTextAreaElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -267,6 +269,11 @@ const ActiveCallPage = () => {
 
   const handleEndCall = async () => {
     try {
+      // If bot is active, stop it
+      if (botActive) {
+        await stopZoomBot();
+      }
+      
       // If you're the host and want to end for everyone
       if (currentUser.isHost) {
         await client.endMeeting();
@@ -321,9 +328,34 @@ const ActiveCallPage = () => {
     }
   };
 
-  const handleJoinBot = () => {
-    console.log("Join Bot button clicked - functionality to be implemented");
-    // Implementation will come later
+  const handleJoinBot = async () => {
+    console.log("Join Bot button clicked - starting Zoom bot");
+    
+    // Show loading state while bot is starting
+    setIsBotJoining(true);
+    
+    try {
+      // Start the Zoom bot with current meeting credentials
+      const result = await startZoomBot(
+        meetingCredentials.meetingNumber,
+        meetingCredentials.password
+      );
+      
+      if (result.success) {
+        console.log("Zoom bot started successfully");
+        // Update UI to show bot is active
+        setBotActive(true);
+      } else {
+        console.error("Failed to start Zoom bot:", result.error);
+        // Show error message to user
+        alert("Failed to start Zoom bot: " + result.error);
+      }
+    } catch (error) {
+      console.error("Error starting Zoom bot:", error);
+      alert("Error starting Zoom bot");
+    } finally {
+      setIsBotJoining(false);
+    }
   };
 
   return (
@@ -439,14 +471,20 @@ const ActiveCallPage = () => {
                       <Button
                         variant="secondary"
                         onClick={handleJoinBot}
-                        className={`text-sm ${isBotJoinable ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
-                        disabled={!isBotJoinable}
+                        className={`text-sm ${
+                          botActive 
+                            ? 'bg-green-600 hover:bg-green-700' 
+                            : isBotJoinable 
+                              ? 'bg-purple-600 hover:bg-purple-700' 
+                              : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                        }`}
+                        disabled={!isBotJoinable || botActive || isBotJoining}
                       >
-                        Join Bot
+                        {botActive ? "Bot Active" : isBotJoining ? "Joining..." : "Join Bot"}
                       </Button>
                       
                       {/* Tooltip that appears on hover when button is disabled */}
-                      {!isBotJoinable && (
+                      {!isBotJoinable && !botActive && (
                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
                           {participantCount < 2 ? "Available with 2 Participants" : participantCount > 2 ? "Too many participants" : ""}
                         </div>

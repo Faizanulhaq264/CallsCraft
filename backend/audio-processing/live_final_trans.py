@@ -253,10 +253,26 @@ async def main():
                 lambda: asyncio.create_task(shutdown(signal, loop, processor)),
             )
 
-        async with websockets.connect('ws://localhost:8180') as websocket:
-            print(f"Connected to ZoomBot WebSocket server")
-            print(f"Saving transcript to: {processor.transcript_file}")
-            await processor.process_audio(websocket)
+        # Add reconnection loop
+        while True:
+            try:
+                print("Connecting to ZoomBot WebSocket server on port 8180...")
+                async with websockets.connect('ws://localhost:8180') as websocket:
+                    print(f"Connected to ZoomBot WebSocket server")
+                    print(f"Saving transcript to: {processor.transcript_file}")
+                    await processor.process_audio(websocket)
+            except websockets.exceptions.ConnectionClosed:
+                print("Connection to ZoomBot WebSocket server closed")
+                print("Attempting to reconnect in 5 seconds...")
+                await asyncio.sleep(5)
+            except ConnectionRefusedError:
+                print("Connection to ZoomBot WebSocket server refused")
+                print("Attempting to reconnect in 5 seconds...")
+                await asyncio.sleep(5)
+            except Exception as e:
+                print(f"Error connecting to ZoomBot WebSocket server: {e}")
+                print("Attempting to reconnect in 5 seconds...")
+                await asyncio.sleep(5)
 
     except Exception as e:
         print(f"Error: {e}")

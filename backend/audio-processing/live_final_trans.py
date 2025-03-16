@@ -244,7 +244,7 @@ async def main():
     try:
         loop = asyncio.get_event_loop()
         
-        processor = AudioProcessor("d7ce2e3f6336e4d41ab55e54023ebdb03b74f4fd")
+        processor = AudioProcessor(api_key="d7ce2e3f6336e4d41ab55e54023ebdb03b74f4fd")
         await processor.initialize()
 
         for signal in (SIGTERM, SIGINT):

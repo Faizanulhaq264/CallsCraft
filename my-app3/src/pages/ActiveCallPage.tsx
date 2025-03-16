@@ -81,6 +81,8 @@ const ActiveCallPage = () => {
     attention: 90,
     balance: 70,
   })
+  const [participantCount, setParticipantCount] = useState(0);
+  const [isBotJoinable, setIsBotJoinable] = useState(false);
   const navigate = useNavigate()
   const notesRef = useRef<HTMLTextAreaElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -91,6 +93,10 @@ const ActiveCallPage = () => {
     password: ""
   });
   const [isLoadingCredentials, setIsLoadingCredentials] = useState(true);
+
+  // Create refs to store your event handlers
+  const userAddedRef = useRef<((payload: any) => void) | null>(null);
+  const userRemovedRef = useRef<((payload: any) => void) | null>(null);
 
   // Initialize call data from localStorage
   const [callData, setCallData] = useState<{
@@ -151,6 +157,25 @@ const ActiveCallPage = () => {
         zak: '',
       });
       console.log("Joined successfully");
+      
+      // Create the event handlers and store references
+      userAddedRef.current = (payload) => {
+        console.log('New participant joined', payload);
+        updateParticipantCount();
+      };
+      
+      userRemovedRef.current = (payload) => {
+        console.log('Participant left', payload);
+        updateParticipantCount();
+      };
+      
+      // Register event handlers using the stored references
+      client.on('user-added', userAddedRef.current);
+      client.on('user-removed', userRemovedRef.current);
+      
+      // Initial participant count check
+      setTimeout(updateParticipantCount, 2000); // Give time for attendance list to populate
+      
     } catch (error) {
       console.error("Error in Zoom meeting:", error);
     }
@@ -218,6 +243,18 @@ const ActiveCallPage = () => {
       if (timerRef.current) clearInterval(timerRef.current)
       if (gaugeTimerRef.current) clearInterval(gaugeTimerRef.current)
       clearInterval(transcriptionInterval)
+      
+      // Remove event listeners if they were set
+      try {
+        if (userAddedRef.current) {
+          client.off('user-added', userAddedRef.current);
+        }
+        if (userRemovedRef.current) {
+          client.off('user-removed', userRemovedRef.current);
+        }
+      } catch (e) {
+        console.error("Error removing event listeners:", e);
+      }
     }
   }, [currentUser])
 
@@ -267,6 +304,27 @@ const ActiveCallPage = () => {
   const toggleMute = () => {
     setIsMuted(!isMuted)
   }
+
+  const updateParticipantCount = () => {
+    try {
+      const participants = client.getAttendeeslist();
+      const count = participants ? participants.length : 0;
+      console.log(`Current participant count: ${count}`);
+      setParticipantCount(count);
+      
+      // Bot is joinable when exactly 2 participants (host + client)
+      setIsBotJoinable(count === 2);
+    } catch (error) {
+      console.error("Error getting participant list:", error);
+      setParticipantCount(0);
+      setIsBotJoinable(false);
+    }
+  };
+
+  const handleJoinBot = () => {
+    console.log("Join Bot button clicked - functionality to be implemented");
+    // Implementation will come later
+  };
 
   return (
     <PageTransition>
@@ -366,16 +424,37 @@ const ActiveCallPage = () => {
               <Card className="h-full min-h-[600px] flex flex-col lg:sticky lg:top-24">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-medium">Zoom Interface</h3>
-                  <Button
-                    variant="secondary"
-                    onClick={startMeeting}
-                    className="text-sm"
-                    disabled={isLoadingCredentials}
-                  >
-                    {isLoadingCredentials ? "Loading..." : "Connect"}
-                  </Button>
+                  <div className="flex space-x-2 items-center">
+                    <Button
+                      variant="secondary"
+                      onClick={startMeeting}
+                      className="text-sm"
+                      disabled={isLoadingCredentials}
+                    >
+                      {isLoadingCredentials ? "Loading..." : "Connect"}
+                    </Button>
+                    
+                    {/* Join Bot button with tooltip */}
+                    <div className="relative group">
+                      <Button
+                        variant="secondary"
+                        onClick={handleJoinBot}
+                        className={`text-sm ${isBotJoinable ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
+                        disabled={!isBotJoinable}
+                      >
+                        Join Bot
+                      </Button>
+                      
+                      {/* Tooltip that appears on hover when button is disabled */}
+                      {!isBotJoinable && (
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                          {participantCount < 2 ? "Available with 2 Participants" : participantCount > 2 ? "Too many participants" : ""}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                
+
                 <div 
                   id="zoomMeetingSDKElement" 
                   className="flex-grow bg-[#242424] rounded-lg overflow-hidden"
@@ -386,6 +465,9 @@ const ActiveCallPage = () => {
                       <p className="text-gray-400">Loading meeting credentials...</p>
                     </div>
                   )}
+                </div>
+                <div className="text-xs text-gray-500 mt-1 text-right">
+                  {participantCount > 0 ? `${participantCount} participants` : "Not connected"}
                 </div>
               </Card>
             </div>

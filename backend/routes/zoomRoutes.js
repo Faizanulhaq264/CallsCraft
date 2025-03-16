@@ -72,9 +72,9 @@ router.get('/callback', async (req, res) => {
         
         // Get user profile after successful authentication
         const userProfile = await getUserProfile(access_token);
-        console.log("User PMI ID:", userProfile.pmi);    // User's PMI ID
-        console.log("User Id:", userProfile.id);         // User's ID
-        
+        // console.log("User PMI ID:", userProfile.pmi);    // User's PMI ID
+        // console.log("User Id:", userProfile.id);         // User's ID
+        // console.log("Access Token: ", access_token);
         // Fetch PMI password using the correct endpoint
         const userSettings = await axios.get(`https://api.zoom.us/v2/users/${userProfile.id}/settings`, {
             headers: {

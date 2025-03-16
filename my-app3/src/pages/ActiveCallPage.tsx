@@ -211,7 +211,7 @@ const ActiveCallPage = () => {
     }
 
     // Automatically start the Zoom meeting when component mounts
-    startMeeting();
+    // startMeeting();
 
     // Cleanup
     return () => {
@@ -228,13 +228,41 @@ const ActiveCallPage = () => {
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  const handleEndCall = () => {
-    // Store transcription in localStorage
-    localStorage.setItem("transcription", JSON.stringify(transcription))
-
-    // Navigate to call summary page
-    navigate("/call-summary")
-  }
+  const handleEndCall = async () => {
+    try {
+      // If you're the host and want to end for everyone
+      if (currentUser.isHost) {
+        await client.endMeeting();
+      } else {
+        // If you're just a participant
+        await client.leaveMeeting();
+      }
+      
+      console.log("Successfully left/ended the meeting");
+      
+      // Clean up the Zoom client
+      ZoomMtgEmbedded.destroyClient();
+      
+      // Store transcription in localStorage
+      localStorage.setItem("transcription", JSON.stringify(transcription));
+      
+      // Navigate to call summary page
+      navigate("/call-summary");
+    } catch (error) {
+      console.error("Error during meeting cleanup:", error);
+      
+      // Still try to destroy the client even if meeting end failed
+      try {
+        ZoomMtgEmbedded.destroyClient();
+      } catch (cleanupError) {
+        console.error("Failed to destroy Zoom client:", cleanupError);
+      }
+      
+      // Continue with navigation anyway
+      localStorage.setItem("transcription", JSON.stringify(transcription));
+      navigate("/call-summary");
+    }
+  };
 
   const toggleMute = () => {
     setIsMuted(!isMuted)

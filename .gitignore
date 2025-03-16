@@ -29,3 +29,6 @@ backend/.env
 # zoomBot/call_transcripts
 # zoomBot/transcripts
 # zoomBot/recordings
+
+# #ZOOM BOT Config
+zoomBot-config/config.txt

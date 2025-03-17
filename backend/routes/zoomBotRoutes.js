@@ -57,18 +57,24 @@ router.post('/start-zoom-bot', (req, res) => {
             1 // Role 1 for host
         );
         
+        console.log("Generated token for meeting:", meetingNumber);
+        
         // Generate the config file with dynamic credentials
         const configPath = generateConfigFile(meetingNumber, password, token);
         
-        // Now run the Docker container with the config file mounted as a volume
+        console.log("Generated config file at:", configPath);
+        
+        // Now run the Docker container with the config file mounted to the external-config directory
         const command = `
             docker run -d --rm \\
             -p 8180:8180 \\
             -p 8080:8080 \\
-            -v ${configPath}:/app/demo/config.txt \\
+            -v "${configPath}:/external-config/config.txt" \\
             --name zoom-sdk-container \\
             zoom-meeting-sdk
         `;
+
+        console.log("Starting Docker container with dynamic config...");
 
         exec(command, (error, stdout, stderr) => {
             if (error) {

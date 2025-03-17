@@ -85,6 +85,9 @@ const ActiveCallPage = () => {
   const [isBotJoinable, setIsBotJoinable] = useState(false);
   const [botActive, setBotActive] = useState(false);
   const [isBotJoining, setIsBotJoining] = useState(false);
+  const [botUserId, setBotUserId] = useState<number | null>(null);
+  const [botInMeeting, setBotInMeeting] = useState(false);
+  const botRef = useRef<{ handler: ((payload: any) => void) | null }>({ handler: null });
   const navigate = useNavigate()
   const notesRef = useRef<HTMLTextAreaElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -178,6 +181,46 @@ const ActiveCallPage = () => {
       // Initial participant count check
       setTimeout(updateParticipantCount, 2000); // Give time for attendance list to populate
       
+      // Register event handlers for participant tracking
+      botRef.current.handler = (payload) => {
+        console.log("New participant joined - checking for bot:", payload);
+        
+        // Check if payload is an array
+        if (Array.isArray(payload)) {
+          // Loop through all participants in the array
+          for (let i = 0; i < payload.length; i++) {
+            const participant = payload[i];
+            if (participant && (participant.displayName === "ZOOMBOT" || participant.userName === "ZOOMBOT")) {
+              console.log("Bot joined the meeting with ID:", participant.userId);
+              setBotUserId(participant.userId);
+              setBotInMeeting(true);
+              setIsBotJoining(false); // Important: stop the joining state
+              return; // Exit once we find the bot
+            }
+          }
+        } else {
+          // Handle the case where payload is a single participant
+          if (payload && (payload.displayName === "ZOOMBOT" || payload.userName === "ZOOMBOT")) {
+            console.log("Bot joined the meeting with ID:", payload.userId);
+            setBotUserId(payload.userId);
+            setBotInMeeting(true);
+            setIsBotJoining(false); // Important: stop the joining state
+          }
+        }
+      };
+      
+      // Add the handler
+      client.on('user-added', botRef.current.handler);
+      
+      // Also handle bot removal
+      client.on('user-removed', (payload) => {
+        if (payload.userId === botUserId) {
+          console.log("Bot left the meeting");
+          setBotInMeeting(false);
+          setBotUserId(null);
+        }
+      });
+      
     } catch (error) {
       console.error("Error in Zoom meeting:", error);
     }
@@ -253,6 +296,9 @@ const ActiveCallPage = () => {
         }
         if (userRemovedRef.current) {
           client.off('user-removed', userRemovedRef.current);
+        }
+        if (botRef.current.handler) {
+          client.off('user-added', botRef.current.handler);
         }
       } catch (e) {
         console.error("Error removing event listeners:", e);
@@ -342,19 +388,51 @@ const ActiveCallPage = () => {
       );
       
       if (result.success) {
-        console.log("Zoom bot started successfully");
-        // Update UI to show bot is active
+        console.log("Zoom bot container started successfully");
         setBotActive(true);
+        
+        // Instead of immediately checking for the bot and setting timers,
+        // just add a short message about waiting room
+        alert("Zoom bot is starting. You may need to admit it from the waiting room.");
+        
+        // Check once for the bot after a short delay
+        setTimeout(() => {
+          checkForBot();
+          // Even if bot isn't found, we'll rely on the event listeners to catch it
+          setIsBotJoining(false);
+        }, 5000);
       } else {
         console.error("Failed to start Zoom bot:", result.error);
-        // Show error message to user
         alert("Failed to start Zoom bot: " + result.error);
+        setIsBotJoining(false);
       }
     } catch (error) {
       console.error("Error starting Zoom bot:", error);
       alert("Error starting Zoom bot");
-    } finally {
       setIsBotJoining(false);
+    }
+  };
+
+  const checkForBot = () => {
+    try {
+      const participants = client.getAttendeeslist();
+      console.log("Checking for bot in current participants:", participants);
+      
+      if (participants && participants.length > 0) {
+        for (const p of participants) {
+          if (p.displayName === "ZOOMBOT" || p.userName === "ZOOMBOT") {
+            console.log("Found bot in current participants with ID:", p.userId);
+            setBotUserId(p.userId);
+            setBotInMeeting(true);
+            setIsBotJoining(false);
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking for bot:", error);
+      return false;
     }
   };
 
@@ -472,15 +550,17 @@ const ActiveCallPage = () => {
                         variant="secondary"
                         onClick={handleJoinBot}
                         className={`text-sm ${
-                          botActive 
-                            ? 'bg-green-600 hover:bg-green-700' 
-                            : isBotJoinable 
-                              ? 'bg-purple-600 hover:bg-purple-700' 
-                              : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                          botInMeeting 
+                            ? 'bg-green-600 hover:bg-green-700'  // Bot is in the meeting 
+                            : botActive 
+                              ? 'bg-yellow-600 hover:bg-yellow-700' // Container running but bot not in meeting yet
+                              : isBotJoinable 
+                                ? 'bg-purple-600 hover:bg-purple-700' // Can start the bot
+                                : 'bg-gray-700 text-gray-400 cursor-not-allowed' // Can't start the bot
                         }`}
-                        disabled={!isBotJoinable || botActive || isBotJoining}
+                        disabled={!isBotJoinable || botActive || botInMeeting || isBotJoining}
                       >
-                        {botActive ? "Bot Active" : isBotJoining ? "Joining..." : "Join Bot"}
+                        {botInMeeting ? "Bot Active" : botActive ? "Bot Starting" : isBotJoining ? "Joining..." : "Join Bot"}
                       </Button>
                       
                       {/* Tooltip that appears on hover when button is disabled */}

@@ -12,6 +12,8 @@ import os
 import aiohttp
 from typing import Dict, List
 import websockets.server
+import mysql.connector
+from mysql.connector import Error
 
 from deepgram import (
     DeepgramClient,
@@ -22,6 +24,148 @@ from deepgram import (
 
 # load_dotenv()
 
+# MOVE DATABASE FUNCTIONS TO THE TOP OF THE FILE
+# =============================================
+
+# Database connection functions
+def get_db_config():
+    """
+    Extract database configuration from the .env file in the backend directory
+    """
+    try:
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env_file = os.path.join(backend_dir, ".env")
+        
+        env_vars = {}
+        if os.path.exists(env_file):
+            with open(env_file, 'r') as f:
+                for line in f:
+                    line = line.strip()  # Fixed: line.strip() is now assigned
+                    if line and not line.startswith('//') and not line.startswith('#'):
+                        if '=' in line:
+                            key, value = line.split('=', 1)
+                            env_vars[key] = value.strip('"\'')
+        
+        return {
+            'host': env_vars.get('DB_HOST', 'localhost'),
+            'port': int(env_vars.get('DB_PORT', 3306)),
+            'user': env_vars.get('DB_USER', 'root'),
+            'password': env_vars.get('DB_PASSWORD', ''),
+            'database': env_vars.get('DB_NAME', 'callsCraft')
+        }
+    except Exception as e:
+        print(f"Error reading database config: {e}")
+        return {
+            'host': 'localhost',
+            'port': 3306,
+            'user': 'root',
+            'password': '',
+            'database': 'callsCraft'
+        }
+
+def connect_to_db():
+    """
+    Establish a connection to the MySQL database
+    """
+    try:
+        config = get_db_config()
+        conn = mysql.connector.connect(**config)
+        print("Connected to MySQL database!")
+        return conn
+    except Error as e:
+        print(f"Error connecting to MySQL database: {e}")
+        return None
+
+def get_active_call_id(db_conn):
+    """
+    Get the most recent active call ID from the database
+    """
+    if not db_conn or not db_conn.is_connected():
+        return None
+    
+    try:
+        cursor = db_conn.cursor()
+        # Get the most recent active call
+        query = """
+        SELECT CallID FROM meetingCall 
+        WHERE EndTime IS NULL
+        ORDER BY StartTime DESC LIMIT 1
+        """
+        cursor.execute(query)
+        result = cursor.fetchone()
+        cursor.close()
+        
+        if result:
+            call_id = result[0]
+            print(f"Processing audio for active call ID: {call_id}")
+            return call_id
+        else:
+            print("No active calls found in database")
+            return None
+    except Error as e:
+        print(f"Database error retrieving active call: {e}")
+        return None
+
+def store_audio_sentiment(db_conn, call_id, sentiment):
+    """
+    Store audio sentiment results in the database
+    """
+    if not call_id:
+        print("Cannot store sentiment: No active call ID")
+        return False
+    
+    if not db_conn or not db_conn.is_connected():
+        db_conn = connect_to_db()
+        if not db_conn:
+            return False
+    
+    try:
+        cursor = db_conn.cursor()
+        
+        # Insert sentiment analysis results
+        query = """
+        INSERT INTO AudioResults 
+        (CallID, Sentiment, Timestamp) 
+        VALUES (%s, %s, %s)
+        """
+        current_time = datetime.now()
+        cursor.execute(query, (call_id, sentiment, current_time))
+        
+        db_conn.commit()
+        cursor.close()
+        print(f"Stored sentiment '{sentiment}' in database for call ID {call_id}")
+        return True
+    except Error as e:
+        print(f"Database error storing audio sentiment: {e}")
+        return False
+
+async def broadcast_transcript(websocket, speaker, text):
+    """
+    Broadcast transcript to frontend
+    """
+    print(f"Start Broadcasting transcript: {speaker} - {text}" , flush=True)
+    try:
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        message = {
+            "type": "transcript",
+            "data": {
+                "speaker": speaker.capitalize(),  # "Host" or "Client"
+                "text": text,
+                "timestamp": timestamp
+            }
+        }
+        print(f"Right before the Broadcasting transcript sending the object to frontend: {message}" , flush=True)
+        await websocket.send(json.dumps(message))
+        print(json.dumps(message))
+        print(f"Broadcast sent end of broadcast function: {speaker} - {text}" , flush=True)
+        return True
+    except Exception as e:
+        print(f"Error broadcasting transcript: {e}")
+        return False
+
+# THE REST OF YOUR CODE STAYS THE SAME
+# =============================================
+
 class TranscriptionPipeline:
     def __init__(self, source_type):
         self.source_type = source_type  # "host" or "client"
@@ -30,6 +174,9 @@ class TranscriptionPipeline:
         self.transcript_file = None
         self.session = None
         self.sentiment_websocket = None
+        # Add database connection
+        self.db_conn = None
+        self.call_id = None
         
     def get_timestamp(self):
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -78,30 +225,49 @@ class TranscriptionPipeline:
         
         # Create aiohttp session
         self.session = aiohttp.ClientSession()
+        
+        # Initialize database connection
+        self.db_conn = connect_to_db()
+        if self.db_conn:
+            self.call_id = get_active_call_id(self.db_conn)
+        
         return True
 
     async def on_open(self, *args, **kwargs):
         print(f"{self.source_type} Deepgram Connection Open")
 
     async def on_message(self, self_, result, **kwargs):
-        sentence = result.channel.alternatives[0].transcript
-        if len(sentence) == 0:
-            return
-        if result.is_final:
-            self.is_finals.append(sentence)
-            if result.speech_final:
-                utterance = " ".join(self.is_finals)
+        try:
+            sentence = result.channel.alternatives[0].transcript
+            if len(sentence) == 0:
+                return
                 
-                # Only get and broadcast sentiment for client
-                if self.source_type == "client":
-                    sentiment = await self.get_sentiment(utterance)
-                    await self.broadcast_sentiment(utterance, sentiment)
-                    print(f"Client Speech Final: {utterance} (Sentiment: {sentiment})")
-                else:
-                    print(f"Host Speech Final: {utterance}")
+            if result.is_final:
+                self.is_finals.append(sentence)
+                if result.speech_final:
+                    utterance = " ".join(self.is_finals)
                     
-                self.write_to_transcript(utterance)  # Write transcription for both
-                self.is_finals = []
+                    # Write to transcript file (for both host and client)
+                    self.write_to_transcript(utterance)
+                    print("This was spoken by the: " , self.source_type , flush=True)
+                    # Broadcast transcript to frontend (for both host and client)
+                    await broadcast_transcript(self.sentiment_websocket, self.source_type, utterance)
+                    
+                    # Only get sentiment and store in database for client
+                    if self.source_type == "client":
+                        sentiment = await self.get_sentiment(utterance)
+                        
+                        # Store sentiment in database
+                        if sentiment and self.db_conn and self.call_id:
+                            store_audio_sentiment(self.db_conn, self.call_id, sentiment)
+                            
+                        print(f"Client Speech Final: {utterance} (Sentiment: {sentiment})")
+                    else:
+                        print(f"Host Speech Final: {utterance}")
+                        
+                    self.is_finals = []
+        except Exception as e:
+            print(f"Error processing transcript: {e}")
 
     async def on_metadata(self, *args, **kwargs):
         pass
@@ -151,25 +317,6 @@ class TranscriptionPipeline:
             print(f"Error in sentiment analysis: {e}")
             return "neutral"
 
-    async def broadcast_sentiment(self, utterance: str, sentiment: str):
-        """Broadcast sentiment analysis results for client only."""
-        if self.source_type != "client":
-            return
-            
-        if self.sentiment_websocket:
-            message = {
-                "text": utterance,
-                "sentiment": sentiment,
-                "timestamp": self.get_timestamp()
-            }
-            try:
-                print(f"Broadcasting client sentiment: {message}")
-                await self.sentiment_websocket.send(json.dumps(message))
-            except Exception as e:
-                print(f"Error broadcasting sentiment: {e}")
-        else:
-            print("No sentiment websocket connection available")
-
 class AudioProcessor:
     def __init__(self, api_key):
         self.host_pipeline = TranscriptionPipeline("host")
@@ -197,7 +344,7 @@ class AudioProcessor:
     async def start_sentiment_server(self):
         """Start WebSocket server for sentiment broadcasting."""
         async def handler(websocket, path):
-            print("New client connected to sentiment server")  # Debug print
+            print("New client connected to sentiment server handler ==> ",handler , flush=True)  # Debug print
             # Update sentiment websocket for both pipelines
             self.sentiment_websocket = websocket
             self.host_pipeline.sentiment_websocket = websocket
@@ -206,13 +353,13 @@ class AudioProcessor:
             try:
                 await websocket.wait_closed()
             finally:
-                print("Client disconnected from sentiment server")
+                print("Client disconnected from sentiment server" , flush=True)
                 self.sentiment_websocket = None
                 self.host_pipeline.sentiment_websocket = None
                 self.client_pipeline.sentiment_websocket = None
 
         self.server = await websockets.serve(handler, "localhost", 8181)
-        print("Sentiment WebSocket server started on port 8181")
+        print("Sentiment WebSocket server started on port 8181", flush=True)
         return self.server
         
     async def initialize(self):

@@ -66,6 +66,13 @@ const Gauge = ({ label, value, color }: { label: string; value: number; color: s
   )
 }
 
+// Add a type definition for transcription entries
+interface TranscriptionEntry {
+  speaker: string;
+  text: string;
+  timestamp: string;
+}
+
 const ActiveCallPage = () => {
   // Create Zoom client instance
   const client = ZoomMtgEmbedded.createClient();
@@ -74,7 +81,7 @@ const ActiveCallPage = () => {
   const [isMuted, setIsMuted] = useState(false)
   const [callTime, setCallTime] = useState(0)
   const [notes, setNotes] = useState("")
-  const [transcription, setTranscription] = useState(mockTranscription)
+  const [transcription, setTranscription] = useState<TranscriptionEntry[]>([]);
   const [gauges, setGauges] = useState({
     mood: 75,
     focus: 85,
@@ -98,6 +105,7 @@ const ActiveCallPage = () => {
     password: ""
   });
   const [isLoadingCredentials, setIsLoadingCredentials] = useState(true);
+  const transcriptionSocketRef = useRef<WebSocket | null>(null);
 
   // Create refs to store your event handlers
   const userAddedRef = useRef<((payload: any) => void) | null>(null);
@@ -265,29 +273,15 @@ const ActiveCallPage = () => {
       }))
     }, 5000)
 
-    // Simulate adding to transcription
-    const transcriptionInterval = setInterval(() => {
-      const newEntry = {
-        speaker: Math.random() > 0.5 ? "You" : "Client",
-        text: "This is a simulated transcription entry for demonstration purposes.",
-        timestamp: formatTime(callTime),
-      }
-      setTranscription((prev) => [...prev, newEntry])
-    }, 15000)
-
     // Focus on notes textarea
     if (notesRef.current) {
       notesRef.current.focus()
     }
 
-    // Automatically start the Zoom meeting when component mounts
-    // startMeeting();
-
     // Cleanup
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
       if (gaugeTimerRef.current) clearInterval(gaugeTimerRef.current)
-      clearInterval(transcriptionInterval)
       
       // Remove event listeners if they were set
       try {
@@ -305,6 +299,49 @@ const ActiveCallPage = () => {
       }
     }
   }, [currentUser])
+
+useEffect(() => {
+  // Create WebSocket connection - make sure port matches backend (8181)
+  console.log('Setting up WebSocket connection...');
+  const transcriptionSocket = new WebSocket('ws://localhost:8181');
+  
+  // Store the socket in ref so we can close it later
+  transcriptionSocketRef.current = transcriptionSocket;
+  
+  transcriptionSocket.onopen = () => {
+    console.log('✅ Successfully connected to WebSocket server on port 8181!');
+  };
+  
+  transcriptionSocket.onmessage = (event) => {
+    try {
+      const message = JSON.parse(event.data);
+      console.log('Received message from WebSocket:', message); // Debug logging
+      
+      // We now only handle transcript messages
+      if (message.type === 'transcript') {
+        const { speaker, text, timestamp } = message.data;
+        console.log('Received transcript:', { speaker, text, timestamp }); // Debug logging
+        
+        // Add the new transcript entry
+        setTranscription(prev => [...prev, { speaker, text, timestamp }]);
+      }
+    } catch (error) {
+      console.error('Error processing WebSocket message:', error);
+    }
+  };
+  
+  transcriptionSocket.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
+  
+  // Clean up on component unmount
+  return () => {
+    if (transcriptionSocketRef.current) {
+      console.log('Closing transcription WebSocket connection');
+      transcriptionSocketRef.current.close();
+    }
+  };
+}, []); // Empty dependency array means this runs once on component mount
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)

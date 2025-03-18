@@ -1,5 +1,5 @@
 const express = require('express');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const db = require('../db/db-configs');
@@ -248,31 +248,38 @@ router.post('/start-processors', (req, res) => {
     console.log(videoScriptPath);
     console.log("Starting Audio and Video Processors...");
     
-    // Start Audio Processor
-    const audioProcess = exec(`python3 "${audioScriptPath}"`, { detached: false }, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error starting Audio Processor: ${error}`);
-        }
-        if (stderr) {
-            console.error(`Audio Processor stderr: ${stderr}`);
-        }
-        if (stdout) {
-            console.log(`Audio Processor stdout: ${stdout}`);
-        } 
+    // Start Audio Processor with spawn instead of exec
+    const audioProcess = spawn('python3', [audioScriptPath], { 
+        detached: true,
+        stdio: ['ignore', 'pipe', 'pipe']
     });
     
-    // Start Video Processor
-    const videoProcess = exec(`python3 "${videoScriptPath}"`, { detached: true }, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error starting Video Processor: ${error}`);
-        }
-        if (stderr) {
-            console.error(`Video Processor stderr: ${stderr}`);
-        }
-        if (stdout) {
-            console.log(`Video Processor stdout: ${stdout}`);
-        }
+    if (!audioProcess.pid) {
+        console.error('Error starting Audio Processor in the backend');
+    }
+
+    // Capture output in real-time
+    audioProcess.stdout.on('data', (data) => {
+        console.log(`Audio Processor stdout: ${data}`);
     });
+    
+    audioProcess.stderr.on('data', (data) => {
+        console.error(`Audio Processor stderr: ${data}`);
+    });
+    
+    // Start Video Processor (similar changes)
+    const videoProcess = spawn('python3', [videoScriptPath], {
+        detached: true,
+        stdio: ['ignore', 'pipe', 'pipe']
+    });
+    
+    // videoProcess.stdout.on('data', (data) => {
+    //     console.log(`Video Processor stdout: ${data}`);
+    // });
+    
+    // videoProcess.stderr.on('data', (data) => {
+    //     console.error(`Video Processor stderr: ${data}`);
+    // });
     
     // Set process IDs
     const audioPid = audioProcess.pid;

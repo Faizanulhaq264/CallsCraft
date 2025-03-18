@@ -14,6 +14,7 @@ node_modules/
 # BACKEND
 backend/node_modules/
 backend/audio-processing/transcripts/
+backend/transcripts/
 # backend/recordings
 backend/.env
 # backend/npm-debug.log

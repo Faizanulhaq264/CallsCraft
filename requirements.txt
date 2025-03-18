@@ -9,4 +9,5 @@ functools
 transformers
 tensorflow
 tf-keras
+mysql-connector-python
 pyaudio

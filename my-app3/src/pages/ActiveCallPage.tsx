@@ -318,6 +318,50 @@ const ActiveCallPage = () => {
       // If bot is active, stop it
       if (botActive) {
         await stopZoomBot();
+        
+        // Also stop processors if PIDs are stored
+        const pidsString = localStorage.getItem("processorPids");
+        if (pidsString) {
+          const pids = JSON.parse(pidsString);
+          
+          // Stop audio processor
+          if (pids.audio) {
+            await axios.post('http://localhost:4000/api/stop-processor', { pid: pids.audio });
+          }
+          
+          // Stop video processor
+          if (pids.video) {
+            await axios.post('http://localhost:4000/api/stop-processor', { pid: pids.video });
+          }
+          
+          // Clear stored PIDs
+          localStorage.removeItem("processorPids");
+        }
+      }
+
+      // Get the active callID from localStorage (from the callData object)
+      let callID = null;
+      const callDataString = localStorage.getItem("callData");
+      
+      if (callDataString) {
+        try {
+          const callData = JSON.parse(callDataString);
+          callID = callData.callID;
+        } catch (parseError) {
+          console.error("Error parsing callData from localStorage:", parseError);
+        }
+      }
+      
+      if (callID) {
+        // Call the end-call API endpoint to update the EndTime in the database
+        try {
+          const response = await axios.post('http://localhost:4000/api/end-call', { callID });
+          console.log("Call ended in database:", response.data);
+        } catch (endCallError) {
+          console.error("Error ending call in database:", endCallError);
+        }
+      } else {
+        console.warn("No active callID found, couldn't update call end time in database");
       }
       
       // If you're the host and want to end for everyone
@@ -333,9 +377,6 @@ const ActiveCallPage = () => {
       // Clean up the Zoom client
       ZoomMtgEmbedded.destroyClient();
       
-      // Store transcription in localStorage
-      localStorage.setItem("transcription", JSON.stringify(transcription));
-      
       // Navigate to call summary page
       navigate("/call-summary");
     } catch (error) {
@@ -349,7 +390,6 @@ const ActiveCallPage = () => {
       }
       
       // Continue with navigation anyway
-      localStorage.setItem("transcription", JSON.stringify(transcription));
       navigate("/call-summary");
     }
   };
@@ -391,25 +431,58 @@ const ActiveCallPage = () => {
         console.log("Zoom bot container started successfully");
         setBotActive(true);
         
-        // Instead of immediately checking for the bot and setting timers,
-        // just add a short message about waiting room
-        alert("Zoom bot is starting. You may need to admit it from the waiting room.");
+        // Set up an event handler to check if bot has joined the meeting
+        botRef.current.handler = (payload) => {
+          console.log("New participant joined - checking for bot:", payload);
+          
+          // Check if payload is an array
+          if (Array.isArray(payload)) {
+            // Loop through all participants
+            for (let i = 0; i < payload.length; i++) {
+              const participant = payload[i];
+              if (participant && (participant.displayName === "ZOOMBOT" || participant.userName === "ZOOMBOT")) {
+                console.log("Bot joined the meeting with ID:", participant.userId);
+                setBotUserId(participant.userId);
+                setBotInMeeting(true);
+                setIsBotJoining(false);
+                
+                // Bot detected! Start the processors
+                startProcessors();
+                return;
+              }
+            }
+          }
+        };
         
-        // Check once for the bot after a short delay
-        setTimeout(() => {
-          checkForBot();
-          // Even if bot isn't found, we'll rely on the event listeners to catch it
-          setIsBotJoining(false);
-        }, 5000);
+        // Register the event handler
+        client.on('user-added', botRef.current.handler);
+        
       } else {
-        console.error("Failed to start Zoom bot:", result.error);
-        alert("Failed to start Zoom bot: " + result.error);
         setIsBotJoining(false);
+        console.error("Failed to start Zoom bot");
       }
     } catch (error) {
-      console.error("Error starting Zoom bot:", error);
-      alert("Error starting Zoom bot");
       setIsBotJoining(false);
+      console.error("Error starting Zoom bot:", error);
+    }
+  };
+
+  // Add this new function to start processors
+  const startProcessors = async () => {
+    try {
+      // Start both audio and video processors at once
+      const response = await axios.post('http://localhost:4000/api/start-processors');
+      
+      if (response.data.success) {
+        console.log("Audio and video processors started successfully:", response.data.pids);
+        
+        // Store PIDs for later cleanup if needed
+        localStorage.setItem("processorPids", JSON.stringify(response.data.pids));
+      } else {
+        console.error("Failed to start processors");
+      }
+    } catch (error) {
+      console.error("Error starting processors:", error);
     }
   };
 

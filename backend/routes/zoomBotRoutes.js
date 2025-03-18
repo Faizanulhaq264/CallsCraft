@@ -98,7 +98,7 @@ router.post('/start-zoom-bot', (req, res) => {
 /* ============================================================= */
 // Endpoint to stop the Zoom bot
 router.post('/stop-zoom-bot', (req, res) => {
-    const command = `docker stop zoom-sdk-container`;
+    const command = `docker rm -f zoom-sdk-container`;
     
     exec(command, (error, stdout, stderr) => {
         if (error) {
@@ -162,6 +162,171 @@ router.get('/audio-video-results', (req, res) => {
                 timestamp,
                 newTimestamp: new Date().toISOString().slice(0, 19).replace('T', ' ')
             });
+        });
+    });
+});
+
+/* ============================================================= */
+// Endpoint to start audio processor
+router.post('/start-audio-processor', (req, res) => {
+    // Path to the Python script
+    const scriptPath = path.join(__dirname, '..', 'audio-processing', 'AudioProcessorFile.py');
+    
+    // Command to run the script with Python
+    const command = `python3 "${scriptPath}"`;
+    
+    console.log("Starting Audio Processor...");
+    
+    // Execute the command as a detached process so it runs in the background
+    const audioProcess = exec(command, { detached: true }, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error starting Audio Processor: ${error}`);
+            return;
+        }
+        if (stderr) {
+            console.error(`Audio Processor stderr: ${stderr}`);
+        }
+    });
+    
+    // Set process ID in response
+    const pid = audioProcess.pid;
+    console.log(`Audio Processor started with PID: ${pid}`);
+    
+    // Don't wait for the process to finish - it will run in the background
+    audioProcess.unref();
+    
+    res.status(200).json({ 
+        success: true, 
+        message: 'Audio Processor started',
+        pid: pid
+    });
+});
+
+/* ============================================================= */
+// Endpoint to start video processor
+router.post('/start-video-processor', (req, res) => {
+    // Path to the Python script
+    const scriptPath = path.join(__dirname, '..', 'video-processing', 'read_video.py');
+    
+    // Command to run the script with Python
+    const command = `python3 "${scriptPath}"`;
+    
+    console.log("Starting Video Processor...");
+    
+    // Execute the command as a detached process so it runs in the background
+    const videoProcess = exec(command, { detached: true }, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error starting Video Processor: ${error}`);
+            return;
+        }
+        if (stderr) {
+            console.error(`Video Processor stderr: ${stderr}`);
+        }
+    });
+    
+    // Set process ID in response
+    const pid = videoProcess.pid;
+    console.log(`Video Processor started with PID: ${pid}`);
+    
+    // Don't wait for the process to finish - it will run in the background
+    videoProcess.unref();
+    
+    res.status(200).json({ 
+        success: true, 
+        message: 'Video Processor started',
+        pid: pid 
+    });
+});
+
+/* ============================================================= */
+// Endpoint to start both processors at once
+router.post('/start-processors', (req, res) => {
+    // Paths to Python scripts
+    const audioScriptPath = path.join(__dirname, '..', 'audio-processing', 'AudioProcessorFile.py');
+    const videoScriptPath = path.join(__dirname, '..', 'video-processing', 'read_video.py');
+    console.log(audioScriptPath);
+    console.log(videoScriptPath);
+    console.log("Starting Audio and Video Processors...");
+    
+    // Start Audio Processor
+    const audioProcess = exec(`python3 "${audioScriptPath}"`, { detached: false }, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error starting Audio Processor: ${error}`);
+        }
+        if (stderr) {
+            console.error(`Audio Processor stderr: ${stderr}`);
+        }
+        if (stdout) {
+            console.log(`Audio Processor stdout: ${stdout}`);
+        } 
+    });
+    
+    // Start Video Processor
+    const videoProcess = exec(`python3 "${videoScriptPath}"`, { detached: true }, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error starting Video Processor: ${error}`);
+        }
+        if (stderr) {
+            console.error(`Video Processor stderr: ${stderr}`);
+        }
+        if (stdout) {
+            console.log(`Video Processor stdout: ${stdout}`);
+        }
+    });
+    
+    // Set process IDs
+    const audioPid = audioProcess.pid;
+    const videoPid = videoProcess.pid;
+    
+    console.log(`Audio Processor started with PID: ${audioPid}`);
+    console.log(`Video Processor started with PID: ${videoPid}`);
+    
+    // Don't wait for processes to finish - they will run in the background
+    audioProcess.unref();
+    videoProcess.unref();
+    
+    res.status(200).json({ 
+        success: true, 
+        message: 'Audio and Video Processors started',
+        pids: {
+            audio: audioPid,
+            video: videoPid
+        }
+    });
+});
+
+/* ============================================================= */
+// Endpoint to kill processes by PID
+router.post('/stop-processor', (req, res) => {
+    const { pid } = req.body;
+    
+    if (!pid) {
+        return res.status(400).json({ 
+            success: false, 
+            error: "Process ID is required" 
+        });
+    }
+    
+    console.log(`Attempting to stop process with PID: ${pid}`);
+    
+    // Use different commands based on operating system
+    const command = process.platform === 'win32' 
+        ? `taskkill /PID ${pid} /F` 
+        : `kill -9 ${pid}`;
+    
+    exec(command, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error stopping process: ${error}`);
+            return res.status(500).json({ 
+                success: false, 
+                error: error.message 
+            });
+        }
+        
+        console.log(`Process with PID ${pid} stopped successfully`);
+        res.status(200).json({ 
+            success: true, 
+            message: `Process with PID ${pid} stopped successfully` 
         });
     });
 });

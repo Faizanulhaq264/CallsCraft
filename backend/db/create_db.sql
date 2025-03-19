@@ -90,11 +90,16 @@ CREATE TABLE Analytics (
 
 -- Create Task Table
 CREATE TABLE Task (
-    AccomplishmentID INT PRIMARY KEY AUTO_INCREMENT,
-    Goal VARCHAR(255),
-    Status BOOLEAN
+    TaskID INT PRIMARY KEY AUTO_INCREMENT,
+    Goal VARCHAR(255) NOT NULL,
+    Status BOOLEAN DEFAULT FALSE,
+    CallID INT,
+    UserID INT,
+    ClientID INT,
+    FOREIGN KEY (CallID) REFERENCES meetingCall(CallID),
+    FOREIGN KEY (UserID) REFERENCES User(UserID),
+    FOREIGN KEY (ClientID) REFERENCES Client(ClientID)
 );
-
 -- Create Note Table
 CREATE TABLE Note (
     NoteID INT PRIMARY KEY AUTO_INCREMENT,

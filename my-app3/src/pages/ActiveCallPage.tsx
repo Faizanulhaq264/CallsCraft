@@ -74,6 +74,9 @@ interface TranscriptionEntry {
 }
 
 const ActiveCallPage = () => {
+  // Add a ref for the transcription container
+  const transcriptionContainerRef = useRef<HTMLDivElement>(null);
+  
   // Create Zoom client instance
   const client = ZoomMtgEmbedded.createClient();
   
@@ -358,6 +361,13 @@ useEffect(() => {
     }
   };
 }, []); // Empty dependency array means this runs once on component mount
+
+  // Add this function to auto-scroll to bottom when new transcriptions arrive
+  useEffect(() => {
+    if (transcriptionContainerRef.current && isTranscriptionOpen) {
+      transcriptionContainerRef.current.scrollTop = transcriptionContainerRef.current.scrollHeight;
+    }
+  }, [transcription, isTranscriptionOpen]); // This will run whenever transcription updates
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -667,16 +677,19 @@ useEffect(() => {
                 </div>
 
                 <div 
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  className={`transition-all duration-300 ease-in-out ${
                     isTranscriptionOpen ? "max-h-96" : "max-h-0 opacity-0"
                   }`}
                 >
-                  <div className="pr-2 space-y-4">
+                  <div 
+                    ref={transcriptionContainerRef}
+                    className="pr-2 space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900 pb-2"
+                  >
                     {transcription.map((entry, index) => (
                       <div key={index} className="pb-3 border-b border-gray-800 last:border-0">
                         <div className="flex justify-between items-center mb-1">
                           <span
-                            className={`font-medium ${entry.speaker === "You" ? "text-purple-500" : "text-cyan-500"}`}
+                            className={`font-medium ${entry.speaker === "You" || entry.speaker === "Host" ? "text-purple-500" : "text-cyan-500"}`}
                           >
                             {entry.speaker}
                           </span>

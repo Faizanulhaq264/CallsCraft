@@ -6,7 +6,8 @@ import Button from "../components/Button"
 import Card from "../components/Card"
 import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
-import { Download, FileText, FileDown, Check, Clock } from "lucide-react"
+import { Download, FileText, FileDown, Check, Clock, XCircle } from "lucide-react"
+import axios from "axios"
 
 const CallSummaryPage = () => {
   const [callData, setCallData] = useState<{
@@ -19,13 +20,56 @@ const CallSummaryPage = () => {
   const [isDownloadingSummary, setIsDownloadingSummary] = useState(false)
   const [downloadedTranscript, setDownloadedTranscript] = useState(false)
   const [downloadedSummary, setDownloadedSummary] = useState(false)
+  const [tasks, setTasks] = useState<{goal: string, status: boolean}[]>([])
+  const [accomplishmentsAnalyzed, setAccomplishmentsAnalyzed] = useState(false);
+  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
+  const [incompleteTasks, setIncompleteTasks] = useState<string[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const navigate = useNavigate()
+
+  const fetchTasksForCall = async (callID: number) => {
+    try {
+      const response = await axios.get(`http://localhost:4000/api/tasks`, {
+        params: { callID }
+      });
+      setTasks(response.data.tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    }
+  };
+
+  const fetchAccomplishmentAnalysis = async (callID: number) => {
+    try {
+      setIsAnalyzing(true);
+      
+      const response = await axios.get(`http://localhost:4000/api/analyze-accomplishments`, {
+        params: { callID }
+      });
+      
+      if (response.data) {
+        setCompletedTasks(response.data.completed || []);
+        setIncompleteTasks(response.data.incomplete || []);
+        setAccomplishmentsAnalyzed(true);
+      }
+    } catch (error) {
+      console.error("Error analyzing accomplishments:", error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   useEffect(() => {
     // Get call data from localStorage
     const storedCallData = localStorage.getItem("callData")
     if (storedCallData) {
-      setCallData(JSON.parse(storedCallData))
+      const parsedData = JSON.parse(storedCallData);
+      setCallData(parsedData);
+      
+      // Fetch tasks from database if we have a callID
+      if (parsedData.callID) {
+        fetchTasksForCall(parsedData.callID);
+        fetchAccomplishmentAnalysis(parsedData.callID);
+      }
     }
 
     // Get transcription from localStorage
@@ -131,17 +175,66 @@ ${callData?.accomplishments.map((a) => `- ${a}`).join("\n")}
                 </h3>
                 <p className="text-gray-400 mb-4">Review your call accomplishments and download resources.</p>
                 <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4">
-                  <h4 className="text-md font-medium mb-2">Planned Accomplishments:</h4>
-                  {callData?.accomplishments && callData.accomplishments.length > 0 ? (
-                    <ul className="list-disc pl-5 space-y-1">
-                      {callData.accomplishments.map((item, index) => (
-                        <li key={index} className="text-gray-300">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
+                  <h4 className="text-md font-medium mb-2 flex items-center justify-between">
+                    <span>Planned Accomplishments:</span>
+                    {isAnalyzing && (
+                      <span className="text-xs text-gray-500 flex items-center">
+                        <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white mr-2"></div>
+                        Analyzing...
+                      </span>
+                    )}
+                  </h4>
+                  
+                  {accomplishmentsAnalyzed ? (
+                    <div className="space-y-4">
+                      {completedTasks.length > 0 && (
+                        <div>
+                          <h5 className="text-sm font-medium text-green-500 flex items-center gap-1 mb-2">
+                            <Check className="h-4 w-4" /> Completed
+                          </h5>
+                          <ul className="list-disc pl-5 space-y-1">
+                            {completedTasks.map((task, index) => (
+                              <li key={`completed-${index}`} className="text-gray-300">
+                                {task}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {incompleteTasks.length > 0 && (
+                        <div>
+                          <h5 className="text-sm font-medium text-red-500 flex items-center gap-1 mb-2">
+                            <XCircle className="h-4 w-4" /> Not Completed
+                          </h5>
+                          <ul className="list-disc pl-5 space-y-1">
+                            {incompleteTasks.map((task, index) => (
+                              <li key={`incomplete-${index}`} className="text-gray-300">
+                                {task}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {completedTasks.length === 0 && incompleteTasks.length === 0 && (
+                        <p className="text-gray-500 italic">Analysis complete, but could not determine task status.</p>
+                      )}
+                    </div>
                   ) : (
-                    <p className="text-gray-500 italic">No accomplishments were set for this call.</p>
+                    <>
+                      {callData?.accomplishments && callData.accomplishments.length > 0 ? (
+                        <ul className="list-disc pl-5 space-y-1">
+                          {callData.accomplishments.map((item, index) => (
+                            <li key={index} className="text-gray-300">
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-gray-500 italic">No accomplishments were set for this call.</p>
+                      )}
+                    </>
                   )}
                 </div>
               </Card>

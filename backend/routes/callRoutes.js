@@ -1,6 +1,9 @@
 const express = require('express');
 const moment = require('moment');
 const db = require('../db/db-configs');  // Import the database connection
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
 
 const router = express.Router();
 
@@ -185,6 +188,313 @@ router.post('/update-note', (req, res) => {
         }
     });
 });
+/* ============================================================================================ */
+
+// Add task for a call
+router.post('/add-tasks', (req, res) => {
+    const { callID, userID, clientID, tasks } = req.body;
+    
+    if (!callID || !userID || !tasks || !tasks.length) {
+        return res.status(400).json({ message: 'Missing required fields' });
+    }
+    
+    // Create placeholders for multiple INSERT
+    const placeholders = tasks.map(() => '(?, ?, ?, ?, ?)').join(', ');
+    
+    // Flatten values for the query
+    const values = tasks.flatMap(task => [
+        task, 
+        false, // initial status is false (not completed)
+        callID,
+        userID,
+        clientID
+    ]);
+    
+    const insertTasksQuery = `
+        INSERT INTO Task (Goal, Status, CallID, UserID, ClientID)
+        VALUES ${placeholders};
+    `;
+    
+    db.query(insertTasksQuery, values, (err, result) => {
+        if (err) {
+            console.error('Error adding tasks:', err);
+            return res.status(500).json({ message: 'Error adding tasks' });
+        }
+        
+        res.json({
+            message: 'Tasks added successfully',
+            taskCount: tasks.length,
+            firstTaskId: result.insertId
+        });
+    });
+});
+
+/* ============================================================================================ */
+// Analyze call accomplishments and update status in database
+router.get('/analyze-accomplishments', async (req, res) => {
+    const { callID } = req.query;
+    
+    if (!callID) {
+        return res.status(400).json({ message: 'CallID is required' });
+    }
+    
+    try {
+        // 1. Get tasks/accomplishments for this call (include TaskID)
+        const getTasksQuery = `
+            SELECT TaskID, Goal 
+            FROM Task 
+            WHERE CallID = ?;
+        `;
+        
+        db.query(getTasksQuery, [callID], async (err, tasks) => {
+            if (err) {
+                console.error('Error fetching tasks:', err);
+                return res.status(500).json({ message: 'Error fetching tasks' });
+            }
+            
+            if (!tasks || tasks.length === 0) {
+                return res.json({ 
+                    message: 'No accomplishments found for this call',
+                    completed: [],
+                    incomplete: [] 
+                });
+            }
+            
+            // 2. Get transcript from the file
+            const transcriptFileName = `transcript_call_id_${callID}.txt`;
+            const transcriptPath = path.join(__dirname, '..', 'DOWNLOADABLES', transcriptFileName);
+            
+            if (!fs.existsSync(transcriptPath)) {
+                return res.status(404).json({ message: 'Transcript file not found' });
+            }
+            
+            const transcriptContent = fs.readFileSync(transcriptPath, 'utf8');
+            
+            // 3. Format accomplishments for the prompt
+            const accomplishmentsList = tasks.map(task => task.Goal).join('\n');
+            
+            // 4. Call Gemini API
+            const GEMINI_API_KEY = "AIzaSyBolXPg8KntJZJ0sJAoGfx2Bx49gRWYYcs";//process.env.GEMINI_API_KEY;
+            if (!GEMINI_API_KEY) {
+                return res.status(500).json({ message: 'Gemini API key not configured' });
+            }
+            
+            try {
+                const apiResponse = await axios.post(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+                    {
+                        contents: [{
+                            role: "user",
+                            parts: [{
+                                text: `you are an expert at checking accomplishments of the host that they set with their client before a call. Use the following accomplishment list and call transcript and analyze every accomplishment with the full transcription of the call to be sure that host was able to complete the accomplishment during the call or not and as a dictionary return accomplishments completed and not completed:\nAccomplishments:\n${accomplishmentsList}\nTranscript:\n${transcriptContent}`
+                            }]
+                        }],
+                        generationConfig: {
+                            temperature: 0,
+                            topK: 40,
+                            topP: 0.95,
+                            maxOutputTokens: 8192,
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "object",
+                                properties: {
+                                    completed: {
+                                        type: "array",
+                                        items: {
+                                            type: "string"
+                                        }
+                                    },
+                                    incomplete: {
+                                        type: "array",
+                                        items: {
+                                            type: "string"
+                                        }
+                                    }
+                                },
+                                required: [
+                                    "completed",
+                                    "incomplete"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                
+                // Extract the result from the Gemini API response
+                console.log('Gemini API response:', apiResponse);
+                const result = apiResponse.data.candidates[0].content.parts[0].text;
+                console.log('Gemini API result:', result , "type of ", typeof result);
+                let parsedResult;
+                
+                try {
+                    // The result might be JSON or have JSON inside text
+                    if (typeof result === 'string') {
+                        // Try to extract JSON from the string
+                        const jsonMatch = result.match(/(\{[\s\S]*\})/);
+                        if (jsonMatch) {
+                            parsedResult = JSON.parse(jsonMatch[0]);
+                        } else {
+                            parsedResult = JSON.parse(result);
+                        }
+                    } else if (result.text) {
+                        // If it's an object with text property
+                        const jsonMatch = result.text.match(/(\{[\s\S]*\})/);
+                        if (jsonMatch) {
+                            parsedResult = JSON.parse(jsonMatch[0]);
+                        }
+                    } else {
+                        // If it's already a proper object
+                        parsedResult = result;
+                    }
+                    
+                    const completedTasks = parsedResult.completed || [];
+                    const incompleteTasks = parsedResult.incomplete || [];
+                    
+                    // 5. Update database with task status
+                    const updatePromises = [];
+                    
+                    // Create a map for easy task lookup
+                    const taskMap = tasks.reduce((map, task) => {
+                        map[task.Goal] = task.TaskID;
+                        return map;
+                    }, {});
+                    
+                    // Update completed tasks
+                    completedTasks.forEach(taskText => {
+                        // Find the most likely matching task from our database
+                        const bestMatch = findBestTaskMatch(taskText, tasks.map(t => t.Goal));
+                        
+                        if (bestMatch && taskMap[bestMatch]) {
+                            const updateQuery = `
+                                UPDATE Task 
+                                SET Status = TRUE 
+                                WHERE TaskID = ?;
+                            `;
+                            
+                            const updatePromise = new Promise((resolve, reject) => {
+                                db.query(updateQuery, [taskMap[bestMatch]], (err, result) => {
+                                    if (err) {
+                                        console.error('Error updating task status:', err);
+                                        reject(err);
+                                    } else {
+                                        resolve(result);
+                                    }
+                                });
+                            });
+                            
+                            updatePromises.push(updatePromise);
+                        }
+                    });
+                    
+                    // Update incomplete tasks
+                    incompleteTasks.forEach(taskText => {
+                        // Find the most likely matching task from our database
+                        const bestMatch = findBestTaskMatch(taskText, tasks.map(t => t.Goal));
+                        
+                        if (bestMatch && taskMap[bestMatch]) {
+                            const updateQuery = `
+                                UPDATE Task 
+                                SET Status = FALSE 
+                                WHERE TaskID = ?;
+                            `;
+                            
+                            const updatePromise = new Promise((resolve, reject) => {
+                                db.query(updateQuery, [taskMap[bestMatch]], (err, result) => {
+                                    if (err) {
+                                        console.error('Error updating task status:', err);
+                                        reject(err);
+                                    } else {
+                                        resolve(result);
+                                    }
+                                });
+                            });
+                            
+                            updatePromises.push(updatePromise);
+                        }
+                    });
+                    
+                    // Wait for all updates to complete
+                    await Promise.all(updatePromises).catch(err => {
+                        console.error('Error updating task statuses:', err);
+                    });
+                    
+                    res.json({
+                        message: 'Analysis completed and task statuses updated',
+                        completed: completedTasks,
+                        incomplete: incompleteTasks
+                    });
+                } catch (parseError) {
+                    console.error('Error parsing Gemini API result:', parseError);
+                    res.status(500).json({ 
+                        message: 'Error processing API response',
+                        rawResponse: result 
+                    });
+                }
+            } catch (apiError) {
+                console.error('Error calling Gemini API:', apiError.response?.data || apiError.message);
+                res.status(500).json({ message: 'Error analyzing accomplishments' });
+            }
+        });
+    } catch (error) {
+        console.error('Error in analyze-accomplishments endpoint:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Helper function to find the best matching task
+// This handles slight variations in text that might come from the LLM
+function findBestTaskMatch(taskText, dbTasks) {
+    // Simple algorithm: First try exact match, then case-insensitive match,
+    // then substring match, then longest common words match
+    
+    // Exact match
+    const exactMatch = dbTasks.find(t => t === taskText);
+    if (exactMatch) return exactMatch;
+    
+    // Case-insensitive match
+    const caseInsensitiveMatch = dbTasks.find(t => 
+        t.toLowerCase() === taskText.toLowerCase());
+    if (caseInsensitiveMatch) return caseInsensitiveMatch;
+    
+    // Substring match (task is contained in LLM result or vice versa)
+    const substringMatch = dbTasks.find(t => 
+        t.toLowerCase().includes(taskText.toLowerCase()) || 
+        taskText.toLowerCase().includes(t.toLowerCase()));
+    if (substringMatch) return substringMatch;
+    
+    // Word similarity match
+    let bestMatchScore = 0;
+    let bestMatch = null;
+    
+    const taskWords = taskText.toLowerCase().split(/\s+/);
+    
+    dbTasks.forEach(dbTask => {
+        const dbWords = dbTask.toLowerCase().split(/\s+/);
+        let matchCount = 0;
+        
+        // Count matching words
+        taskWords.forEach(word => {
+            if (dbWords.includes(word) && word.length > 2) { // Only count meaningful words
+                matchCount++;
+            }
+        });
+        
+        // Calculate score as percentage of words matched
+        const score = matchCount / Math.max(taskWords.length, dbWords.length);
+        
+        if (score > bestMatchScore && score > 0.5) { // At least 50% word match
+            bestMatchScore = score;
+            bestMatch = dbTask;
+        }
+    });
+    
+    return bestMatch;
+}
 /* ============================================================================================ */
 
 module.exports = router;

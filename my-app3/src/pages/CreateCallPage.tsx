@@ -117,6 +117,16 @@ const CreateCallPage = () => {
       }
   
       console.log("Call started successfully:", callData);
+
+      // save tasks to database
+      if (validAccomplishments.length > 0) {
+        await axios.post(`${'http://localhost:4000'}/api/add-tasks`, {
+          callID: callData.callID,
+          userID: currentUser.id,
+          clientID: clientID,
+          tasks: validAccomplishments
+        });
+      }
   
       // Store call data in localStorage for use in other pages
       // Include both the user-entered data and the database IDs

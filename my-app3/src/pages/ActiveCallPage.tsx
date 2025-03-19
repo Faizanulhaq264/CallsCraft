@@ -77,6 +77,10 @@ const ActiveCallPage = () => {
 
   const [hasRecordingPermission, setHasRecordingPermission] = useState(false);
 
+  // Add these imports and state variables
+  const [noteUpdateTimeout, setNoteUpdateTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
   async function startMeeting() {
     // Don't proceed if credentials aren't loaded yet
     if (isLoadingCredentials || !meetingCredentials.meetingNumber) {
@@ -274,6 +278,11 @@ const ActiveCallPage = () => {
       } catch (e) {
         console.error("Error removing event listeners:", e);
       }
+
+      // Clear note update timeout
+      if (noteUpdateTimeout) {
+        clearTimeout(noteUpdateTimeout);
+      }
     }
   }, [currentUser])
 
@@ -364,6 +373,63 @@ const ActiveCallPage = () => {
     };
   }, []);
 
+  // Add this function to update notes with debounce
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newNotes = e.target.value;
+    setNotes(newNotes);
+    
+    // Clear existing timeout if there is one
+    if (noteUpdateTimeout) {
+      clearTimeout(noteUpdateTimeout);
+    }
+    
+    // Set a new timeout to update the note after 5 seconds of inactivity
+    const timeout = setTimeout(() => {
+      updateNoteInDatabase(newNotes);
+    }, 5000);
+    
+    setNoteUpdateTimeout(timeout);
+  };
+
+  // Function to send note update to the server
+  const updateNoteInDatabase = async (content: string) => {
+    // Get the active callID from localStorage
+    let callID = null;
+    const callDataString = localStorage.getItem("callData");
+    
+    if (callDataString) {
+      try {
+        const callData = JSON.parse(callDataString);
+        callID = callData.callID;
+      } catch (parseError) {
+        console.error("Error parsing callData from localStorage:", parseError);
+        return; // Exit if we can't get callID
+      }
+    }
+    
+    if (!callID) {
+      console.warn("No active callID found, can't update note");
+      return;
+    }
+    
+    try {
+      setIsSavingNote(true);
+      
+      const response = await axios.post('http://localhost:4000/api/update-note', {
+        callID: callID,
+        content: content
+      });
+      
+      if (response.data) {
+        console.log("Note updated successfully:", response.data);
+      }
+    } catch (error) {
+      console.error("Error updating note:", error);
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
@@ -373,6 +439,17 @@ const ActiveCallPage = () => {
 
   const handleEndCall = async () => {
     try {
+      // Update the note one last time before ending the call
+      if (notes.trim()) {
+        await updateNoteInDatabase(notes);
+      }
+      
+      // Clear any pending timeout
+      if (noteUpdateTimeout) {
+        clearTimeout(noteUpdateTimeout);
+        setNoteUpdateTimeout(null);
+      }
+
       // If we have an active gauge update interval, clear it
       if (gaugeUpdateIntervalRef.current) {
         clearInterval(gaugeUpdateIntervalRef.current);
@@ -735,8 +812,13 @@ const ActiveCallPage = () => {
                   className="w-full h-[calc(100%-3rem)] bg-gray-900 border border-gray-800 rounded-md p-3 text-white resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="Take notes here..."
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={handleNotesChange}
                 ></textarea>
+                {isSavingNote && (
+                  <div className="absolute bottom-3 right-3 text-xs text-gray-500">
+                    Saving...
+                  </div>
+                )}
               </Card>
 
               {/* Transcription */}

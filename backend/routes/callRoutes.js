@@ -497,4 +497,217 @@ function findBestTaskMatch(taskText, dbTasks) {
 }
 /* ============================================================================================ */
 
+/* ============================================================================================ */
+// Generate call summary from transcript
+router.get('/generate-summary', async (req, res) => {
+    const { callID } = req.query;
+    
+    if (!callID) {
+        return res.status(400).json({ message: 'CallID is required' });
+    }
+    
+    try {
+        // 1. Get transcript from the file
+        const transcriptFileName = `transcript_call_id_${callID}.txt`;
+        const transcriptPath = path.join(__dirname, '..', 'DOWNLOADABLES', transcriptFileName);
+        
+        if (!fs.existsSync(transcriptPath)) {
+            return res.status(404).json({ message: 'Transcript file not found' });
+        }
+        
+        const transcriptContent = fs.readFileSync(transcriptPath, 'utf8');
+        
+        // 2. Create Summaries directory if it doesn't exist
+        const summariesDir = path.join(__dirname, '..', 'Summaries');
+        if (!fs.existsSync(summariesDir)) {
+            fs.mkdirSync(summariesDir, { recursive: true });
+        }
+        
+        // 3. Call Gemini API
+        console.log("Reading env variable ", process.env.GEMINI_API_KEY);
+        const GEMINI_API_KEY = "AIzaSyBolXPg8KntJZJ0sJAoGfx2Bx49gRWYYcs"; // Replace with process.env.GEMINI_API_KEY in production
+        if (!GEMINI_API_KEY) {
+            return res.status(500).json({ message: 'Gemini API key not configured' });
+        }
+        
+        try {
+            const apiResponse = await axios.post(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+                {
+                    contents: [{
+                        role: "user",
+                        parts: [{
+                            text: `you are an expert summary writer. You shall take transcript of the sales pitch call happening between the sales person host and client and extract the following details from the transcript and give it to me as a summary of points (making sure every new point is separated by \\n to denote a new line:
+1. Client's Reaction to the Pitch:
+   - How did the client respond to the salesperson's pitch?
+   - Positive or negative feedback on the product or service.
+   - Any areas of confusion or clarification requested.
+
+2. Client's Intentions and Needs:
+   - What does the client express about their goals or needs?
+   - Are they looking to solve a problem, achieve a goal, or satisfy a specific requirement?
+   - Any pain points or challenges they mention that the product could address.
+
+3. Budget and Financial Considerations:
+   - Does the client indicate their budget for the product/service?
+   - Are there concerns about pricing, value, or ROI (Return on Investment)?
+   
+4. Objections or Concerns:
+   - Any hesitations or objections the client raises.
+   - Questions about product features, delivery time, support, or contracts.
+
+5. Competitor Comparison:
+   - Does the client mention competitors or compare your offering with other products/services?
+   - How does the client view your product in relation to others?
+
+6. Interest Level and Readiness to Buy:
+   - How interested is the client in moving forward with the purchase?
+   - Do they express a timeline for making a decision?
+
+7. Action Items and Next Steps:
+   - What are the agreed-upon next steps after the call (e.g., sending additional information, scheduling another meeting, offering a demo)?
+   - Any commitments or follow-ups promised by either party.
+
+8. Client's Contact Information and Decision-Makers:
+   - Is there a mention of other key stakeholders or decision-makers involved?
+   - Any details about who will make the final decision on the purchase.
+   - Any mention of any dates or other details about the client (e.g email, cell number, office/home addresses etc)
+
+Transcript:
+${transcriptContent}`
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.3,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: 8192,
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "object",
+                            properties: {
+                                summary: {
+                                    type: "string"
+                                }
+                            },
+                            required: [
+                                "summary"
+                            ]
+                        }
+                    }
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            
+            // 4. Extract and process the result
+            console.log('Gemini API summary response:', apiResponse.data);
+            const result = apiResponse.data.candidates[0].content.parts[0].text;
+            let summary = '';
+            
+            try {
+                // Parse the JSON response
+                if (typeof result === 'string') {
+                    // Try to extract JSON from the string if needed
+                    const jsonMatch = result.match(/(\{[\s\S]*\})/);
+                    if (jsonMatch) {
+                        const parsedResult = JSON.parse(jsonMatch[0]);
+                        summary = parsedResult.summary;
+                    } else {
+                        // Try parsing the entire result as JSON
+                        try {
+                            const parsedResult = JSON.parse(result);
+                            summary = parsedResult.summary;
+                        } catch (e) {
+                            // If it's not valid JSON, use the raw text
+                            summary = result;
+                        }
+                    }
+                } else if (result.text) {
+                    // If it's an object with text property
+                    summary = result.text;
+                } else {
+                    // If it already has a summary property
+                    summary = result.summary || JSON.stringify(result);
+                }
+                
+                // 5. Replace \n with actual newlines for file writing
+                const formattedSummary = summary.replace(/\\n/g, '\n');
+                
+                // 6. Write the summary to a file
+                const summaryFileName = `summary_call_id_${callID}.txt`;
+                const summaryPath = path.join(summariesDir, summaryFileName);
+                
+                fs.writeFileSync(summaryPath, formattedSummary);
+                
+                // 7. Return success
+                res.json({
+                    message: 'Summary generated successfully',
+                    summary: formattedSummary,
+                    summaryPath: summaryPath
+                });
+                
+            } catch (parseError) {
+                console.error('Error parsing Gemini API summary result:', parseError);
+                res.status(500).json({ 
+                    message: 'Error processing API response',
+                    rawResponse: result 
+                });
+            }
+        } catch (apiError) {
+            console.error('Error calling Gemini API for summary:', apiError.response?.data || apiError.message);
+            res.status(500).json({ message: 'Error generating summary' });
+        }
+    } catch (error) {
+        console.error('Error in generate-summary endpoint:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+/* ============================================================================================ */
+
+/* ============================================================================================ */
+// Download file endpoint (serves files from DOWNLOADABLES or Summaries directory)
+router.get('/download-file', (req, res) => {
+    const { callID, fileType } = req.query;
+    
+    if (!callID || !fileType) {
+        return res.status(400).json({ message: 'CallID and fileType are required' });
+    }
+    
+    try {
+        let filePath;
+        let fileName;
+        
+        if (fileType === 'transcript') {
+            fileName = `transcript_call_id_${callID}.txt`;
+            filePath = path.join(__dirname, '..', 'DOWNLOADABLES', fileName);
+        } else if (fileType === 'summary') {
+            fileName = `summary_call_id_${callID}.txt`;
+            filePath = path.join(__dirname, '..', 'Summaries', fileName);
+        } else {
+            return res.status(400).json({ message: 'Invalid fileType. Must be transcript or summary' });
+        }
+        
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ message: `${fileType} file not found` });
+        }
+        
+        // Set headers for file download
+        res.setHeader('Content-disposition', `attachment; filename=${fileName}`);
+        res.setHeader('Content-type', 'text/plain');
+        
+        // Create read stream and pipe to response
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        console.error(`Error downloading ${fileType}:`, error);
+        res.status(500).json({ message: `Error downloading ${fileType}` });
+    }
+});
+/* ============================================================================================ */
+
 module.exports = router;

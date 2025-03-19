@@ -770,6 +770,29 @@ const ActiveCallPage = () => {
     }
   };
 
+  // Prevent returning to this page via back button
+  useEffect(() => {
+    // Replace the current history entry
+    window.history.replaceState(null, document.title, window.location.pathname);
+    
+    // Handle back button press
+    const handlePopState = (event: PopStateEvent) => {
+      // Prevent default navigation
+      event.preventDefault();
+      
+      // Redirect to dashboard instead
+      navigate("/dashboard", { replace: true });
+    };
+    
+    // Add event listener
+    window.addEventListener("popstate", handlePopState);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [navigate]);
+
   return (
     <PageTransition>
       <div className="min-h-screen">

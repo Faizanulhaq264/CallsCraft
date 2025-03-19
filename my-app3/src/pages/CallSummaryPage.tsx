@@ -79,69 +79,113 @@ const CallSummaryPage = () => {
     }
   }, [])
 
-  const handleDownloadTranscript = () => {
-    setIsDownloadingTranscript(true)
+  // Prevent returning to active call via back button
+  useEffect(() => {
+    // Replace the current history entry
+    window.history.replaceState(null, document.title, window.location.pathname);
+    
+    // Handle back button press
+    const handlePopState = (event: PopStateEvent) => {
+      // Prevent default navigation
+      event.preventDefault();
+      
+      // Redirect to dashboard instead
+      navigate("/dashboard", { replace: true });
+    };
+    
+    // Add event listener
+    window.addEventListener("popstate", handlePopState);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [navigate]);
 
-    // Simulate download delay
-    setTimeout(() => {
-      // Format transcription for download
-      const formattedTranscript = transcription
-        .map((entry) => `[${entry.timestamp}] ${entry.speaker}: ${entry.text}`)
-        .join("\n\n")
+  const handleDownloadTranscript = async () => {
+    try {
+      setIsDownloadingTranscript(true);
+      
+      // Get callID from localStorage
+      const storedCallData = localStorage.getItem("callData");
+      if (!storedCallData) {
+        console.error("No call data found in localStorage");
+        setIsDownloadingTranscript(false);
+        return;
+      }
+      
+      const callData = JSON.parse(storedCallData);
+      const callID = callData.callID;
+      
+      if (!callID) {
+        console.error("No callID found in localStorage data");
+        setIsDownloadingTranscript(false);
+        return;
+      }
+      
+      // Create a hidden a tag to trigger the download
+      const link = document.createElement('a');
+      link.href = `http://localhost:4000/api/download-file?callID=${callID}&fileType=transcript`;
+      link.setAttribute('download', `transcript_call_id_${callID}.txt`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setIsDownloadingTranscript(false);
+      setDownloadedTranscript(true);
+    } catch (error) {
+      console.error("Error downloading transcript:", error);
+      setIsDownloadingTranscript(false);
+    }
+  };
 
-      // Create download link
-      const element = document.createElement("a")
-      const file = new Blob([formattedTranscript], { type: "text/plain" })
-      element.href = URL.createObjectURL(file)
-      element.download = `call-transcript-${new Date().toISOString().slice(0, 10)}.txt`
-      document.body.appendChild(element)
-      element.click()
-      document.body.removeChild(element)
-
-      setIsDownloadingTranscript(false)
-      setDownloadedTranscript(true)
-    }, 2000)
-  }
-
-  const handleDownloadSummary = () => {
-    setIsDownloadingSummary(true)
-
-    // Simulate download delay and summary generation
-    setTimeout(() => {
-      // Create a mock summary
-      const summary = `
-Call Summary with ${callData?.clientName}
-Date: ${new Date(callData?.timestamp || "").toLocaleString()}
-Duration: 25 minutes
-
-Key Points:
-- Discussed project progress and current development phase
-- Addressed resource allocation challenges
-- Created action plan for timeline management
-- Reviewed upcoming milestones and deliverables
-
-Action Items:
-- Schedule follow-up meeting with project team
-- Share resource allocation document
-- Update project timeline by end of week
-
-Accomplishments:
-${callData?.accomplishments.map((a) => `- ${a}`).join("\n")}
-      `
-
-      // Create download link
-      const element = document.createElement("a")
-      const file = new Blob([summary], { type: "text/plain" })
-      element.href = URL.createObjectURL(file)
-      element.download = `call-summary-${new Date().toISOString().slice(0, 10)}.txt`
-      document.body.appendChild(element)
-      element.click()
-      document.body.removeChild(element)
-
-      setIsDownloadingSummary(false)
-      setDownloadedSummary(true)
-    }, 3500)
-  }
+  const handleDownloadSummary = async () => {
+    try {
+      setIsDownloadingSummary(true);
+      
+      // Get callID from localStorage
+      const storedCallData = localStorage.getItem("callData");
+      if (!storedCallData) {
+        console.error("No call data found in localStorage");
+        setIsDownloadingSummary(false);
+        return;
+      }
+      
+      const callData = JSON.parse(storedCallData);
+      const callID = callData.callID;
+      
+      if (!callID) {
+        console.error("No callID found in localStorage data");
+        setIsDownloadingSummary(false);
+        return;
+      }
+      
+      // First generate the summary
+      const generateResponse = await axios.get(`http://localhost:4000/api/generate-summary`, {
+        params: { callID }
+      });
+      
+      if (!generateResponse.data || generateResponse.status !== 200) {
+        throw new Error("Failed to generate summary");
+      }
+      
+      console.log("Summary generated successfully:", generateResponse.data.message);
+      
+      // Now download the generated summary
+      const link = document.createElement('a');
+      link.href = `http://localhost:4000/api/download-file?callID=${callID}&fileType=summary`;
+      link.setAttribute('download', `summary_call_id_${callID}.txt`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setIsDownloadingSummary(false);
+      setDownloadedSummary(true);
+    } catch (error) {
+      console.error("Error generating/downloading summary:", error);
+      setIsDownloadingSummary(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     if (!dateString) return ""
@@ -308,33 +352,6 @@ ${callData?.accomplishments.map((a) => `- ${a}`).join("\n")}
               </Card>
             </div>
 
-            <Card>
-              <h3 className="text-xl font-bold mb-4">Transcription Preview</h3>
-              {transcription.length > 0 ? (
-                <div className="max-h-96 overflow-y-auto pr-2 space-y-4">
-                  {transcription.slice(0, 10).map((entry, index) => (
-                    <div key={index} className="pb-3 border-b border-gray-800 last:border-0">
-                      <div className="flex justify-between items-center mb-1">
-                        <span
-                          className={`font-medium ${entry.speaker === "You" ? "text-purple-500" : "text-cyan-500"}`}
-                        >
-                          {entry.speaker}
-                        </span>
-                        <span className="text-xs text-gray-500">{entry.timestamp}</span>
-                      </div>
-                      <p className="text-gray-300">{entry.text}</p>
-                    </div>
-                  ))}
-                  {transcription.length > 10 && (
-                    <p className="text-center text-gray-500 italic">
-                      ... and {transcription.length - 10} more entries. Download the full transcript to see all.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">No transcription available for this call.</p>
-              )}
-            </Card>
           </div>
         </main>
       </div>

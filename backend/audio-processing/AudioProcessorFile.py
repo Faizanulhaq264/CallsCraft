@@ -10,9 +10,11 @@ from datetime import datetime
 import os
 import aiohttp
 from typing import Dict, List
+import inspect  # Add this import
 import websockets.server
 import mysql.connector
 from mysql.connector import Error
+from collections import deque  # Add this import
 
 from deepgram import (
     DeepgramClient,
@@ -140,26 +142,55 @@ def store_audio_sentiment(db_conn, call_id, sentiment):
 
 async def broadcast_transcript(websocket, speaker, text):
     """
-    Broadcast transcript to frontend
+    Broadcast transcript to frontend or queue it if no connection is available
     """
-    print(f"Start Broadcasting transcript: {speaker} - {text}" , flush=True)
-    try:
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        message = {
-            "type": "transcript",
-            "data": {
-                "speaker": speaker.capitalize(),  # "Host" or "Client"
-                "text": text,
-                "timestamp": timestamp
-            }
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    message = {
+        "type": "transcript",
+        "data": {
+            "speaker": speaker.capitalize(),  # "Host" or "Client"
+            "text": text,
+            "timestamp": timestamp
         }
-        print(f"Right before the Broadcasting transcript sending the object to frontend: {message}" , flush=True)
-        await websocket.send(json.dumps(message))
-        print(json.dumps(message))
-        print(f"Broadcast sent end of broadcast function: {speaker} - {text}" , flush=True)
+    }
+    
+    # Convert to JSON string once
+    json_message = json.dumps(message)
+    print(f"Preparing broadcast: {speaker} - {text}", flush=True)
+    
+    # Check if websocket is None
+    if websocket is None:
+        print("WebSocket is None - queueing message for later delivery", flush=True)
+        # Find the AudioProcessor instance
+        # This assumes broadcast_transcript is called from methods in TranscriptionPipeline
+        pipeline_instance = None
+        frame = inspect.currentframe()
+        try:
+            while frame:
+                if 'self' in frame.f_locals:
+                    instance = frame.f_locals['self']
+                    if isinstance(instance, TranscriptionPipeline):
+                        pipeline_instance = instance
+                        break
+                frame = frame.f_back
+        finally:
+            del frame  # Avoid reference cycles
+            
+        if pipeline_instance and hasattr(pipeline_instance, 'processor'):
+            # Queue the message if we have access to the processor
+            pipeline_instance.processor.message_queue.append(json_message)
+            print(f"Message queued. Queue size now: {len(pipeline_instance.processor.message_queue)}", flush=True)
+            return False
+        else:
+            print("Could not find AudioProcessor instance to queue message", flush=True)
+            return False
+    
+    try:
+        await websocket.send(json_message)
+        print(f"Broadcast sent: {speaker} - {text}", flush=True)
         return True
     except Exception as e:
-        print(f"Error broadcasting transcript: {e}")
+        print(f"Error broadcasting transcript: {e}", flush=True)
         return False
 
 # THE REST OF YOUR CODE STAYS THE SAME
@@ -173,6 +204,7 @@ class TranscriptionPipeline:
         self.transcript_file = None
         self.session = None
         self.sentiment_websocket = None
+        self.processor = None  # Add reference to the parent AudioProcessor
         # Add database connection
         self.db_conn = None
         self.call_id = None
@@ -250,7 +282,15 @@ class TranscriptionPipeline:
                     self.write_to_transcript(utterance)
                     print("This was spoken by the: " , self.source_type , flush=True)
                     # Broadcast transcript to frontend (for both host and client)
-                    await broadcast_transcript(self.sentiment_websocket, self.source_type, utterance)
+                    message = {
+                        "type": "transcript",
+                        "data": {
+                            "speaker": self.source_type.capitalize(),
+                            "text": utterance,
+                            "timestamp": datetime.now().strftime("%H:%M:%S")
+                        }
+                    }
+                    await self.websocket_send(message)
                     
                     # Only get sentiment and store in database for client
                     if self.source_type == "client":
@@ -316,14 +356,35 @@ class TranscriptionPipeline:
             print(f"Error in sentiment analysis: {e}")
             return "neutral"
 
+    async def websocket_send(self, message_dict):
+        """Safely send a message to the websocket or queue it if not available"""
+        if not self.sentiment_websocket:
+            if hasattr(self, 'processor') and self.processor:
+                json_str = json.dumps(message_dict)
+                self.processor.message_queue.append(json_str)
+                print(f"Message queued. Queue size: {len(self.processor.message_queue)}")
+                return True
+            return False
+            
+        try:
+            await self.sentiment_websocket.send(json.dumps(message_dict))
+            return True
+        except Exception as e:
+            print(f"Error sending to websocket: {e}")
+            return False
+
 class AudioProcessor:
     def __init__(self, api_key):
         self.host_pipeline = TranscriptionPipeline("host")
         self.client_pipeline = TranscriptionPipeline("client")
+        # Set the processor reference in both pipelines
+        self.host_pipeline.processor = self
+        self.client_pipeline.processor = self
         self.api_key = api_key
         self.transcript_file = self.create_transcript_file()
         self.sentiment_websocket = None
         self.server = None
+        self.message_queue = deque()  # Add a queue to store messages when no client is connected
         
     def create_transcript_file(self):
         # Create transcripts directory if it doesn't exist
@@ -352,17 +413,39 @@ class AudioProcessor:
             
             print("WebSocket connection established and assigned to pipelines", flush=True)
             
+            # Send all queued messages when a client connects
+            await self.send_queued_messages(websocket)
+            
             try:
+                # Keep the connection alive until the client disconnects
                 await websocket.wait_closed()
             finally:
                 print("Client disconnected from sentiment server", flush=True)
-                self.sentiment_websocket = None
-                self.host_pipeline.sentiment_websocket = None
-                self.client_pipeline.sentiment_websocket = None
+                # Only set to None if this is the current websocket
+                if self.sentiment_websocket is websocket:
+                    self.sentiment_websocket = None
+                if self.host_pipeline.sentiment_websocket is websocket:
+                    self.host_pipeline.sentiment_websocket = None
+                if self.client_pipeline.sentiment_websocket is websocket:
+                    self.client_pipeline.sentiment_websocket = None
 
         self.server = await websockets.serve(handler, "localhost", 8181)
         print("Sentiment WebSocket server started on port 8181", flush=True)
         return self.server
+    
+    async def send_queued_messages(self, websocket):
+        """Send all queued messages to the client that just connected"""
+        print(f"Attempting to send {len(self.message_queue)} queued messages", flush=True)
+        while self.message_queue:
+            message = self.message_queue.popleft()
+            try:
+                await websocket.send(message)
+                print(f"Sent queued message: {message[:100]}...", flush=True)
+            except Exception as e:
+                print(f"Error sending queued message: {e}", flush=True)
+                # Put the message back in the queue
+                self.message_queue.appendleft(message)
+                break
         
     async def initialize(self):
         # Start sentiment WebSocket server first

@@ -84,7 +84,7 @@ router.post('/start-call', (req, res) => {
                             return res.status(500).json({ message: 'Error creating audio results (FROM start-call ENDPOINT)' });
                         }
 
-                        db.query(insertVideoResultsQuery, [callID, 'Aligned', 'Center', 'Neutral', timestamp], (err) => {
+                        db.query(insertVideoResultsQuery, [callID, 'Aligned', 'Center-Center', 'neutral', timestamp], (err) => {
                             if (err) {
                                 console.error('Error creating video results (FROM start-call ENDPOINT):', err);
                                 return res.status(500).json({ message: 'Error creating video results (FROM start-call ENDPOINT)' });
@@ -133,6 +133,58 @@ router.post('/end-call', (req, res) => {
     });
 });
 
+/* ============================================================================================ */
+// Update note content
+router.post('/update-note', (req, res) => {
+    const { callID, content } = req.body;
+    
+    if (!callID) {
+        return res.status(400).json({ message: 'CallID is required' });
+    }
+    
+    const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+    
+    // Query to update the existing note for this call
+    const updateNoteQuery = `
+        UPDATE Note 
+        SET Content = ?, Timestamp = ? 
+        WHERE CallID = ?;
+    `;
+    
+    db.query(updateNoteQuery, [content, timestamp, callID], (err, result) => {
+        if (err) {
+            console.error('Error updating note:', err);
+            return res.status(500).json({ message: 'Error updating note' });
+        }
+        
+        // Check if any rows were affected
+        if (result.affectedRows === 0) {
+            // If no rows were affected, the note might not exist, so create it
+            const insertNoteQuery = `
+                INSERT INTO Note (Content, Timestamp, CallID)
+                VALUES (?, ?, ?);
+            `;
+            
+            db.query(insertNoteQuery, [content, timestamp, callID], (err, insertResult) => {
+                if (err) {
+                    console.error('Error creating note:', err);
+                    return res.status(500).json({ message: 'Error creating note' });
+                }
+                
+                res.json({
+                    message: 'Note created successfully',
+                    noteID: insertResult.insertId,
+                    timestamp: timestamp
+                });
+            });
+        } else {
+            res.json({
+                message: 'Note updated successfully',
+                timestamp: timestamp
+            });
+        }
+    });
+});
 /* ============================================================================================ */
 
 module.exports = router;

@@ -20,12 +20,14 @@ const userRoutes = require('./routes/userRoutes');
 const callRoutes = require('./routes/callRoutes');
 const zoomBotRoutes = require('./routes/zoomBotRoutes');  // Import Zoom bot routes
 const zoomRoutes = require('./routes/zoomRoutes');  // Import Zoom routes
+const { router: scoreRoutes } = require('./utils/score-formulas');  // Import score routes
 
 // Use routers
 app.use('/api', userRoutes);
 app.use('/api', callRoutes);
 app.use('/api', zoomBotRoutes);  // Use Zoom bot routes
 app.use('/api', zoomRoutes);  // Use Zoom routes
+app.use('/api', scoreRoutes);  // Use score routes
 
 /* ======================================================================================== */
 

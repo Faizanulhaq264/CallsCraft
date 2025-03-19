@@ -6,37 +6,12 @@ import Button from "../components/Button"
 import Card from "../components/Card"
 import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
+import Gauge from "../components/Gauge" // Import the Gauge component
 import { ChevronDown, ChevronUp, Mic, MicOff, Phone } from "lucide-react"
 import ZoomMtgEmbedded from "@zoom/meetingsdk/embedded";
 import { useAuth } from "../context/AuthContext"; // Adjust import path as needed
 import axios from "axios";
 import { generateSignature, ZOOM_SDK_KEY, ZOOM_SDK_SECRET, startZoomBot, stopZoomBot } from "../utils/zoomUtils";
-
-
-// Gauge component
-const Gauge = ({ label, value, color }: { label: string; value: number; color: string }) => {
-  // Calculate the angle for the gauge needle
-  const angle = (value / 100) * 180 - 90
-
-  return (
-    <div className="flex flex-col items-center">
-      <div className="text-sm text-gray-400 mb-1">{label}</div>
-      <div className="relative w-24 h-12 overflow-hidden">
-        <div className="absolute w-24 h-24 bottom-0 rounded-full border-4 border-gray-800"></div>
-        <div
-          className={`absolute w-24 h-24 bottom-0 rounded-full border-4 border-transparent border-t-${color}-500`}
-          style={{
-            transform: `rotate(${angle}deg)`,
-            borderTopColor: `var(--${color}-500, #8b5cf6)`, // Fallback to purple
-          }}
-        ></div>
-        <div className="absolute inset-0 flex items-center justify-center bottom-1">
-          <span className="text-lg font-bold">{value}%</span>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // Add a type definition for transcription entries
 interface TranscriptionEntry {
@@ -58,10 +33,10 @@ const ActiveCallPage = () => {
   const [notes, setNotes] = useState("")
   const [transcription, setTranscription] = useState<TranscriptionEntry[]>([]);
   const [gauges, setGauges] = useState({
-    mood: 75,
-    focus: 85,
-    attention: 90,
-    balance: 70,
+    attentionEconomics: 50, // Start at neutral 50%
+    moodInduction: 50,
+    valueInternalization: 50,
+    cognitiveResonance: 50,
   })
   const [participantCount, setParticipantCount] = useState(0);
   const [isBotJoinable, setIsBotJoinable] = useState(false);
@@ -73,7 +48,7 @@ const ActiveCallPage = () => {
   const navigate = useNavigate()
   const notesRef = useRef<HTMLTextAreaElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const gaugeTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const gaugeUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { currentUser } = useAuth();
   const [meetingCredentials, setMeetingCredentials] = useState({
     meetingNumber: "",
@@ -99,6 +74,8 @@ const ActiveCallPage = () => {
     clientName: string
     accomplishments: string[]
   } | null>(null)
+
+  const [hasRecordingPermission, setHasRecordingPermission] = useState(false);
 
   async function startMeeting() {
     // Don't proceed if credentials aren't loaded yet
@@ -211,6 +188,33 @@ const ActiveCallPage = () => {
           setBotUserId(null);
         }
       });
+
+      // Add event listener for recording permission
+      client.on('media-capture-permission-change', (payload) => {
+        console.log('Recording permission change:', payload);
+        if (payload.canRecord === true) {
+          console.log('Recording permission granted!');
+          setHasRecordingPermission(true);
+          
+          // Start gauge update interval
+          if (!gaugeUpdateIntervalRef.current) {
+            console.log('Starting gauge update interval');
+            // First fetch immediately
+            fetchGaugeData();
+            // Then fetch every 15 seconds
+            gaugeUpdateIntervalRef.current = setInterval(fetchGaugeData, 15000);
+          }
+        }
+      });
+      
+      // Also listen for recording status changes
+      client.on('local-recording-change', (payload) => {
+        console.log('Local recording change:', payload);
+        if (payload.userId === botUserId && payload.bLocalRecord === true) {
+          console.log('Bot has started recording');
+          // We could do additional actions here if needed
+        }
+      });
       
     } catch (error) {
       console.error("Error in Zoom meeting:", error);
@@ -246,16 +250,6 @@ const ActiveCallPage = () => {
       setCallTime((prev) => prev + 1)
     }, 1000)
 
-    // Simulate changing gauge values
-    gaugeTimerRef.current = setInterval(() => {
-      setGauges((prev) => ({
-        mood: Math.min(100, Math.max(0, prev.mood + (Math.random() * 10 - 5))),
-        focus: Math.min(100, Math.max(0, prev.focus + (Math.random() * 10 - 5))),
-        attention: Math.min(100, Math.max(0, prev.attention + (Math.random() * 10 - 5))),
-        balance: Math.min(100, Math.max(0, prev.balance + (Math.random() * 10 - 5))),
-      }))
-    }, 5000)
-
     // Focus on notes textarea
     if (notesRef.current) {
       notesRef.current.focus()
@@ -264,7 +258,7 @@ const ActiveCallPage = () => {
     // Cleanup
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
-      if (gaugeTimerRef.current) clearInterval(gaugeTimerRef.current)
+      if (gaugeUpdateIntervalRef.current) clearInterval(gaugeUpdateIntervalRef.current)
       
       // Remove event listeners if they were set
       try {
@@ -379,6 +373,12 @@ const ActiveCallPage = () => {
 
   const handleEndCall = async () => {
     try {
+      // If we have an active gauge update interval, clear it
+      if (gaugeUpdateIntervalRef.current) {
+        clearInterval(gaugeUpdateIntervalRef.current);
+        gaugeUpdateIntervalRef.current = null;
+      }
+
       // If bot is active, stop it
       if (botActive) {
         await stopZoomBot();
@@ -606,6 +606,13 @@ const ActiveCallPage = () => {
       } else {
         console.error("Failed to start processors");
       }
+
+      // After successfully starting processors, start gauge updates if we have recording permission
+      if (hasRecordingPermission && !gaugeUpdateIntervalRef.current) {
+        console.log('Starting gauge updates after processors');
+        fetchGaugeData(); // Initial fetch
+        gaugeUpdateIntervalRef.current = setInterval(fetchGaugeData, 15000);
+      }
     } catch (error) {
       console.error("Error starting processors:", error);
     }
@@ -631,6 +638,58 @@ const ActiveCallPage = () => {
     } catch (error) {
       console.error("Error checking for bot:", error);
       return false;
+    }
+  };
+
+  // Add a function to fetch gauge data from the backend
+  const fetchGaugeData = async () => {
+    try {
+      // Get the active callID from localStorage
+      let callID = null;
+      const callDataString = localStorage.getItem("callData");
+      
+      if (callDataString) {
+        try {
+          const callData = JSON.parse(callDataString);
+          callID = callData.callID;
+        } catch (parseError) {
+          console.error("Error parsing callData from localStorage:", parseError);
+          return; // Exit if we can't get callID
+        }
+      }
+      
+      if (!callID) {
+        console.warn("No active callID found, can't fetch gauge data");
+        return;
+      }
+      
+      // Get the last update timestamp, or null for first fetch
+      const lastUpdateTimestamp = localStorage.getItem("lastGaugeUpdate") || null;
+      
+      // Call the API endpoint
+      const response = await axios.get('http://localhost:4000/api/get-scores', {
+        params: {
+          callID: callID,
+          timestamp: lastUpdateTimestamp
+        }
+      });
+      
+      if (response.data) {
+        console.log("Received gauge data:", response.data);
+        
+        // Update the gauges state with real data
+        setGauges({
+          attentionEconomics: response.data.attentionEconomics,
+          moodInduction: response.data.moodInduction,
+          valueInternalization: response.data.valueInternalization,
+          cognitiveResonance: response.data.cognitiveResonance
+        });
+        
+        // Save the current timestamp for next fetch
+        localStorage.setItem("lastGaugeUpdate", response.data.timestamp);
+      }
+    } catch (error) {
+      console.error("Error fetching gauge data:", error);
     }
   };
 
@@ -728,10 +787,10 @@ const ActiveCallPage = () => {
               <Card>
                 <h3 className="text-xl font-bold mb-4">Client Metrics</h3>
                 <div className="flex justify-between items-center">
-                  <Gauge label="Mood" value={Math.round(gauges.mood)} color="purple" />
-                  <Gauge label="Focus" value={Math.round(gauges.focus)} color="cyan" />
-                  <Gauge label="Attention" value={Math.round(gauges.attention)} color="purple" />
-                  <Gauge label="Balance" value={Math.round(gauges.balance)} color="cyan" />
+                  <Gauge label="Attention" value={Math.round(gauges.attentionEconomics)} color="purple" />
+                  <Gauge label="Mood" value={Math.round(gauges.moodInduction)} color="cyan" />
+                  <Gauge label="Value" value={Math.round(gauges.valueInternalization)} color="purple" />
+                  <Gauge label="Resonance" value={Math.round(gauges.cognitiveResonance)} color="cyan" />
                 </div>
               </Card>
             </div>

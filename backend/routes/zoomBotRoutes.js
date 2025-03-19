@@ -71,7 +71,7 @@ router.post('/start-zoom-bot', (req, res) => {
             -p 8080:8080 \\
             -v "${configPath}:/external-config/config.txt" \\
             --name zoom-sdk-container \\
-            zoom-meeting-sdk
+            zoom-meeting-sdk2
         `;
 
         console.log("Starting Docker container with dynamic config...");
@@ -358,6 +358,41 @@ router.post('/stop-processor', (req, res) => {
             }
         });
     });
+});
+
+/* ============================================================= */
+// Endpoint to get the latest transcript file content
+router.get('/latest-transcript', (req, res) => {
+    try {
+        const transcriptsDir = path.join(__dirname, '../transcripts');
+        
+        // Get all files in transcripts directory
+        const files = fs.readdirSync(transcriptsDir)
+            .filter(file => file.startsWith('transcript_'))
+            .map(file => ({
+                name: file,
+                path: path.join(transcriptsDir, file),
+                created: fs.statSync(path.join(transcriptsDir, file)).birthtime
+            }))
+            .sort((a, b) => b.created - a.created); // Sort newest first
+        
+        if (files.length === 0) {
+            return res.status(404).json({ error: 'No transcript files found' });
+        }
+        
+        // Get the newest file
+        const latestFile = files[0];
+        const content = fs.readFileSync(latestFile.path, 'utf-8');
+        
+        res.json({
+            filename: latestFile.name,
+            content: content,
+            created: latestFile.created
+        });
+    } catch (error) {
+        console.error('Error reading transcript files:', error);
+        res.status(500).json({ error: 'Failed to read transcript files' });
+    }
 });
 
 module.exports = router;

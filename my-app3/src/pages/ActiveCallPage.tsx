@@ -12,34 +12,6 @@ import { useAuth } from "../context/AuthContext"; // Adjust import path as neede
 import axios from "axios";
 import { generateSignature, ZOOM_SDK_KEY, ZOOM_SDK_SECRET, startZoomBot, stopZoomBot } from "../utils/zoomUtils";
 
-// Mock transcription data
-const mockTranscription = [
-  { speaker: "You", text: "Hello, how are you doing today?", timestamp: "00:00:15" },
-  { speaker: "Client", text: "I'm doing well, thank you for asking.", timestamp: "00:00:18" },
-  { speaker: "You", text: "Great! Let's talk about your goals for today's session.", timestamp: "00:00:22" },
-  {
-    speaker: "Client",
-    text: "I'd like to discuss the progress on the project and any challenges I'm facing.",
-    timestamp: "00:00:30",
-  },
-  { speaker: "You", text: "That sounds good. Let's start with the progress update.", timestamp: "00:00:35" },
-  {
-    speaker: "Client",
-    text: "We've completed the initial phase and are now moving into development.",
-    timestamp: "00:00:42",
-  },
-  { speaker: "You", text: "That's excellent progress. What challenges are you encountering?", timestamp: "00:00:50" },
-  {
-    speaker: "Client",
-    text: "We're having some issues with resource allocation and timeline management.",
-    timestamp: "00:00:58",
-  },
-  {
-    speaker: "You",
-    text: "I understand. Let's break down those challenges and address them one by one.",
-    timestamp: "00:01:10",
-  },
-]
 
 // Gauge component
 const Gauge = ({ label, value, color }: { label: string; value: number; color: string }) => {
@@ -116,6 +88,11 @@ const ActiveCallPage = () => {
 
   // Keep track of whether processors have been started
   const processorsStartedRef = useRef<boolean>(false);
+
+  // Add these imports and state variables
+  const [lastFileContent, setLastFileContent] = useState<string>("");
+  const [lastFileName, setLastFileName] = useState<string>("");
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize call data from localStorage
   const [callData, setCallData] = useState<{
@@ -306,68 +283,92 @@ const ActiveCallPage = () => {
     }
   }, [currentUser])
 
-useEffect(() => {
-  // Create WebSocket connection - make sure port matches backend (8181)
-  console.log('Setting up WebSocket connection...');
-  
-  // Function to create and set up a WebSocket
-  const setupWebSocket = () => {
-    const ws = new WebSocket('ws://localhost:8181');
-    transcriptionSocketRef.current = ws;
+  // Add a function to parse the transcript file content
+  const parseTranscriptContent = (content: string): TranscriptionEntry[] => {
+    const entries: TranscriptionEntry[] = [];
+    const lines = content.split('\n');
     
-    ws.onopen = () => {
-      console.log('✅ Successfully connected to WebSocket server on port 8181!');
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        console.log('Received message from WebSocket:', message);
+    // Skip the header lines (first 3 lines)
+    for (let i = 3; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Skip empty lines and the end transcript line
+      if (!line || line.startsWith('Transcript ended')) continue;
+      
+      // Parse the line: [YYYY-MM-DD HH:MM:SS] speaker: text
+      const match = line.match(/\[(.+?)\] (.+?): (.+)/);
+      if (match) {
+        const [_, fullTimestamp, speaker, text] = match;
+        // Extract just the time part (HH:MM:SS) from the full timestamp
+        const timeOnly = fullTimestamp.split(' ')[1];
         
-        // We now only handle transcript messages
-        if (message.type === 'transcript') {
-          const { speaker, text, timestamp } = message.data;
-          console.log('Received transcript:', { speaker, text, timestamp });
-          
-          // Add the new transcript entry
-          setTranscription(prev => [...prev, { speaker, text, timestamp }]);
-        }
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error);
+        entries.push({
+          speaker: speaker,
+          text: text,
+          timestamp: timeOnly
+        });
+      }
+    }
+    
+    return entries;
+  };
+
+  // Add a function to fetch the latest transcript
+  const fetchLatestTranscript = async () => {
+    try {
+      const response = await axios.get('http://localhost:4000/api/latest-transcript');
+      const { filename, content } = response.data;
+      
+      // If this is a new file or the content has changed
+      if (filename !== lastFileName || content !== lastFileContent) {
+        console.log('New transcript content detected');
+        setLastFileName(filename);
+        setLastFileContent(content);
+        
+        // Parse and update the transcription state
+        const parsedEntries = parseTranscriptContent(content);
+        setTranscription(parsedEntries);
+      }
+    } catch (error) {
+      console.error('Error fetching transcript:', error);
+    }
+  };
+
+  // Add useEffect to start/stop polling for transcript updates
+  useEffect(() => {
+    // Start polling when the bot is in the meeting
+    if (botInMeeting) {
+      console.log('Starting transcript polling');
+      // Fetch immediately
+      fetchLatestTranscript();
+      
+      // Then start polling every 2 seconds
+      pollIntervalRef.current = setInterval(fetchLatestTranscript, 2000);
+    }
+    
+    // Clean up function
+    return () => {
+      if (pollIntervalRef.current) {
+        console.log('Stopping transcript polling');
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
       }
     };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-    
-    ws.onclose = () => {
-      console.log('WebSocket connection closed. Attempting to reconnect...');
-      // Try to reconnect after a delay
-      setTimeout(setupWebSocket, 2000);
-    };
-  };
-  
-  // Initial setup
-  setupWebSocket();
-  
-  // Clean up on component unmount
-  return () => {
-    if (transcriptionSocketRef.current) {
-      // Remove the reconnection logic when intentionally closing
-      transcriptionSocketRef.current.onclose = null; 
-      transcriptionSocketRef.current.close();
-      console.log('Closing transcription WebSocket connection');
-    }
-  };
-}, []); // Empty dependency array means this runs once on component mount
+  }, [botInMeeting, lastFileName, lastFileContent]);
 
-  // Add this function to auto-scroll to bottom when new transcriptions arrive
+  // Add cleanup for the poll interval in your component cleanup
   useEffect(() => {
-    if (transcriptionContainerRef.current && isTranscriptionOpen) {
-      transcriptionContainerRef.current.scrollTop = transcriptionContainerRef.current.scrollHeight;
-    }
-  }, [transcription, isTranscriptionOpen]); // This will run whenever transcription updates
+    // ... your existing cleanup code ...
+    
+    return () => {
+      // ... your existing cleanup code ...
+      
+      // Add this to clean up the poll interval
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -667,7 +668,9 @@ useEffect(() => {
               {/* Transcription */}
               <Card>
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-xl font-bold">Live Transcription</h3>
+                  <h3 className="text-xl font-bold">
+                    Live Transcription {transcription.length > 0 ? `(${transcription.length})` : ""}
+                  </h3>
                   <button
                     onClick={() => setIsTranscriptionOpen(!isTranscriptionOpen)}
                     className="text-gray-400 hover:text-white transition-colors"
@@ -685,19 +688,23 @@ useEffect(() => {
                     ref={transcriptionContainerRef}
                     className="pr-2 space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900 pb-2"
                   >
-                    {transcription.map((entry, index) => (
-                      <div key={index} className="pb-3 border-b border-gray-800 last:border-0">
-                        <div className="flex justify-between items-center mb-1">
-                          <span
-                            className={`font-medium ${entry.speaker === "You" || entry.speaker === "Host" ? "text-purple-500" : "text-cyan-500"}`}
-                          >
-                            {entry.speaker}
-                          </span>
-                          <span className="text-xs text-gray-500">{entry.timestamp}</span>
+                    {transcription.length === 0 ? (
+                      <p className="text-gray-400 text-center py-4">No transcriptions yet</p>
+                    ) : (
+                      transcription.map((entry, index) => (
+                        <div key={`transcript-${index}`} className="pb-3 border-b border-gray-800 last:border-0">
+                          <div className="flex justify-between items-center mb-1">
+                            <span
+                              className={`font-medium ${entry.speaker === "host" || entry.speaker === "Host" ? "text-purple-500" : "text-cyan-500"}`}
+                            >
+                              {entry.speaker.charAt(0).toUpperCase() + entry.speaker.slice(1)}
+                            </span>
+                            <span className="text-xs text-gray-500">{entry.timestamp}</span>
+                          </div>
+                          <p className="text-gray-300">{entry.text}</p>
                         </div>
-                        <p className="text-gray-300">{entry.text}</p>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               </Card>

@@ -15,7 +15,7 @@ import websockets.server
 import mysql.connector
 from mysql.connector import Error
 from collections import deque  # Add this import
-
+import shutil
 from deepgram import (
     DeepgramClient,
     DeepgramClientOptions,
@@ -387,12 +387,16 @@ class AudioProcessor:
         self.message_queue = deque()  # Add a queue to store messages when no client is connected
         
     def create_transcript_file(self):
-        # Create transcripts directory if it doesn't exist
+        # No longer delete existing directory here
+        
+        # Create a transcripts directory if it doesn't exist
+        print("Creating transcripts directory if needed...")
         os.makedirs('transcripts', exist_ok=True)
         
         # Create a new transcript file with timestamp in name
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"transcripts/transcript_{timestamp}.txt"
+        print(f"Creating new transcript file: {filename}")
         
         # Write header to the file
         with open(filename, 'w', encoding='utf-8') as f:
@@ -540,6 +544,24 @@ async def shutdown(signal, loop, processor):
     # Write closing message to transcript
     with open(processor.transcript_file, 'a', encoding='utf-8') as f:
         f.write(f"\n\nTranscript ended at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    
+    # Create DOWNLOADABLES directory if it doesn't exist
+    print("Creating DOWNLOADABLES directory...")
+    os.makedirs('DOWNLOADABLES', exist_ok=True)
+    
+    # Copy the transcript file to DOWNLOADABLES
+    transcript_filename = os.path.basename(processor.transcript_file)
+    destination_path = os.path.join('DOWNLOADABLES', transcript_filename)
+    shutil.copy2(processor.transcript_file, destination_path)
+    print(f"Transcript file saved to: {destination_path}")
+    
+    # Now that we've safely copied the file, delete the transcripts directory
+    print("Removing transcripts directory...")
+    try:
+        shutil.rmtree('transcripts')
+        print("Transcripts directory removed successfully")
+    except Exception as e:
+        print(f"Error removing transcripts directory: {e}")
     
     if processor.host_pipeline.dg_connection:
         await processor.host_pipeline.dg_connection.finish()

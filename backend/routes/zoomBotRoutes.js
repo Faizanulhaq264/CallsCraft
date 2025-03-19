@@ -314,26 +314,48 @@ router.post('/stop-processor', (req, res) => {
         });
     }
     
-    console.log(`Attempting to stop process with PID: ${pid}`);
+    console.log(`[STOP PROCESSOR] Attempting to stop process with PID: ${pid}`);
     
-    // Use different commands based on operating system
-    const command = process.platform === 'win32' 
-        ? `taskkill /PID ${pid} /F` 
-        : `kill -9 ${pid}`;
-    
-    exec(command, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error stopping process: ${error}`);
-            return res.status(500).json({ 
-                success: false, 
-                error: error.message 
+    // First check if the process exists
+    exec(`ps -p ${pid} -o pid=`, (checkError, checkStdout) => {
+        if (checkError || !checkStdout.trim()) {
+            console.log(`[STOP PROCESSOR] Process ${pid} not found, considering it already stopped`);
+            return res.status(200).json({
+                success: true,
+                message: `Process with PID ${pid} is not running or already stopped`
             });
         }
         
-        console.log(`Process with PID ${pid} stopped successfully`);
-        res.status(200).json({ 
-            success: true, 
-            message: `Process with PID ${pid} stopped successfully` 
+        console.log(`[STOP PROCESSOR] Found process ${pid}, attempting to kill it`);
+        
+        // Process exists, try to kill it (using SIGTERM first for graceful shutdown)
+        exec(`kill ${pid}`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`[STOP PROCESSOR] Error with SIGTERM: ${error.message}`);
+                
+                // If SIGTERM fails, try SIGKILL as a fallback
+                exec(`kill -9 ${pid}`, (killError, killStdout, killStderr) => {
+                    if (killError) {
+                        console.error(`[STOP PROCESSOR] Error with SIGKILL: ${killError.message}`);
+                        return res.status(500).json({ 
+                            success: false, 
+                            error: `Failed to stop process: ${killError.message}`,
+                        });
+                    }
+                    
+                    console.log(`[STOP PROCESSOR] Process ${pid} stopped with SIGKILL`);
+                    return res.status(200).json({ 
+                        success: true, 
+                        message: `Process with PID ${pid} forcibly stopped with SIGKILL` 
+                    });
+                });
+            } else {
+                console.log(`[STOP PROCESSOR] Process with PID ${pid} stopped successfully with SIGTERM`);
+                res.status(200).json({ 
+                    success: true, 
+                    message: `Process with PID ${pid} stopped successfully` 
+                });
+            }
         });
     });
 });

@@ -1,6 +1,5 @@
 from signal import SIGINT, SIGTERM
 import asyncio
-from dotenv import load_dotenv
 import websockets
 import json
 import base64
@@ -22,7 +21,7 @@ from deepgram import (
     LiveOptions,
 )
 
-# load_dotenv()
+
 
 # MOVE DATABASE FUNCTIONS TO THE TOP OF THE FILE
 # =============================================
@@ -344,16 +343,19 @@ class AudioProcessor:
     async def start_sentiment_server(self):
         """Start WebSocket server for sentiment broadcasting."""
         async def handler(websocket, path):
-            print("New client connected to sentiment server handler ==> ",handler , flush=True)  # Debug print
-            # Update sentiment websocket for both pipelines
+            print("New client connected to sentiment server", flush=True)
+            
+            # Update sentiment websocket for all instances that need it
             self.sentiment_websocket = websocket
             self.host_pipeline.sentiment_websocket = websocket
             self.client_pipeline.sentiment_websocket = websocket
             
+            print("WebSocket connection established and assigned to pipelines", flush=True)
+            
             try:
                 await websocket.wait_closed()
             finally:
-                print("Client disconnected from sentiment server" , flush=True)
+                print("Client disconnected from sentiment server", flush=True)
                 self.sentiment_websocket = None
                 self.host_pipeline.sentiment_websocket = None
                 self.client_pipeline.sentiment_websocket = None
@@ -366,9 +368,10 @@ class AudioProcessor:
         # Start sentiment WebSocket server first
         await self.start_sentiment_server()
         
-        # Initialize both pipelines
-        await self.host_pipeline.initialize(self.api_key, self.transcript_file, self.sentiment_websocket)
-        await self.client_pipeline.initialize(self.api_key, self.transcript_file, self.sentiment_websocket)
+        # Initialize both pipelines with None for now 
+        # We'll update the websocket connection when a client connects
+        await self.host_pipeline.initialize(self.api_key, self.transcript_file, None)
+        await self.client_pipeline.initialize(self.api_key, self.transcript_file, None)
         
     async def process_audio(self, websocket):
         try:
@@ -386,6 +389,16 @@ class AudioProcessor:
             print(f"WebSocket connection closed")
         except Exception as e:
             print(f"Error processing audio: {e}")
+
+    async def monitor_websockets(self):
+        """Monitor the state of WebSocket connections."""
+        while True:
+            print("======= WebSocket Status =======", flush=True)
+            print(f"AudioProcessor.sentiment_websocket: {self.sentiment_websocket is not None}", flush=True)
+            print(f"Host pipeline.sentiment_websocket: {self.host_pipeline.sentiment_websocket is not None}", flush=True)
+            print(f"Client pipeline.sentiment_websocket: {self.client_pipeline.sentiment_websocket is not None}", flush=True)
+            print("===============================", flush=True)
+            await asyncio.sleep(10)  # Check every 10 seconds
 
 async def main():
     try:
@@ -420,6 +433,9 @@ async def main():
                 print(f"Error connecting to ZoomBot WebSocket server: {e}")
                 print("Attempting to reconnect in 5 seconds...")
                 await asyncio.sleep(5)
+
+        # Start the monitor
+        asyncio.create_task(processor.monitor_websockets())
 
     except Exception as e:
         print(f"Error: {e}")

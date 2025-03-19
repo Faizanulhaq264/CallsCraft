@@ -111,6 +111,9 @@ const ActiveCallPage = () => {
   const userAddedRef = useRef<((payload: any) => void) | null>(null);
   const userRemovedRef = useRef<((payload: any) => void) | null>(null);
 
+  // Keep track of whether processors have been started
+  const processorsStartedRef = useRef<boolean>(false);
+
   // Initialize call data from localStorage
   const [callData, setCallData] = useState<{
     clientName: string
@@ -303,42 +306,55 @@ const ActiveCallPage = () => {
 useEffect(() => {
   // Create WebSocket connection - make sure port matches backend (8181)
   console.log('Setting up WebSocket connection...');
-  const transcriptionSocket = new WebSocket('ws://localhost:8181');
   
-  // Store the socket in ref so we can close it later
-  transcriptionSocketRef.current = transcriptionSocket;
-  
-  transcriptionSocket.onopen = () => {
-    console.log('✅ Successfully connected to WebSocket server on port 8181!');
-  };
-  
-  transcriptionSocket.onmessage = (event) => {
-    try {
-      const message = JSON.parse(event.data);
-      console.log('Received message from WebSocket:', message); // Debug logging
-      
-      // We now only handle transcript messages
-      if (message.type === 'transcript') {
-        const { speaker, text, timestamp } = message.data;
-        console.log('Received transcript:', { speaker, text, timestamp }); // Debug logging
+  // Function to create and set up a WebSocket
+  const setupWebSocket = () => {
+    const ws = new WebSocket('ws://localhost:8181');
+    transcriptionSocketRef.current = ws;
+    
+    ws.onopen = () => {
+      console.log('✅ Successfully connected to WebSocket server on port 8181!');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('Received message from WebSocket:', message);
         
-        // Add the new transcript entry
-        setTranscription(prev => [...prev, { speaker, text, timestamp }]);
+        // We now only handle transcript messages
+        if (message.type === 'transcript') {
+          const { speaker, text, timestamp } = message.data;
+          console.log('Received transcript:', { speaker, text, timestamp });
+          
+          // Add the new transcript entry
+          setTranscription(prev => [...prev, { speaker, text, timestamp }]);
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
       }
-    } catch (error) {
-      console.error('Error processing WebSocket message:', error);
-    }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket connection closed. Attempting to reconnect...');
+      // Try to reconnect after a delay
+      setTimeout(setupWebSocket, 2000);
+    };
   };
   
-  transcriptionSocket.onerror = (error) => {
-    console.error('WebSocket error:', error);
-  };
+  // Initial setup
+  setupWebSocket();
   
   // Clean up on component unmount
   return () => {
     if (transcriptionSocketRef.current) {
-      console.log('Closing transcription WebSocket connection');
+      // Remove the reconnection logic when intentionally closing
+      transcriptionSocketRef.current.onclose = null; 
       transcriptionSocketRef.current.close();
+      console.log('Closing transcription WebSocket connection');
     }
   };
 }, []); // Empty dependency array means this runs once on component mount
@@ -479,12 +495,26 @@ useEffect(() => {
               const participant = payload[i];
               if (participant && (participant.displayName === "ZOOMBOT" || participant.userName === "ZOOMBOT")) {
                 console.log("Bot joined the meeting with ID:", participant.userId);
+                
+                // Check if this is the first join or a reconnect with a different ID
+                // The bot in "hold" state should not trigger processor start
+                if (participant.bHold === true) {
+                  console.log("Bot is in hold state, waiting for final admission");
+                  continue;
+                }
+                
                 setBotUserId(participant.userId);
                 setBotInMeeting(true);
                 setIsBotJoining(false);
                 
-                // Bot detected! Start the processors
-                startProcessors();
+                // Only start processors if they haven't been started yet
+                if (!processorsStartedRef.current) {
+                  console.log("Starting processors for the first time");
+                  processorsStartedRef.current = true;
+                  startProcessors();
+                } else {
+                  console.log("Processors already started, skipping duplicate start");
+                }
                 return;
               }
             }
@@ -507,14 +537,46 @@ useEffect(() => {
   // Add this new function to start processors
   const startProcessors = async () => {
     try {
-      // Start both audio and video processors at once
+      // First, check if we have existing processors running
+      const pidsString = localStorage.getItem("processorPids");
+      
+      if (pidsString) {
+        const pids = JSON.parse(pidsString);
+        console.log("Found existing processors, stopping them first:", pids);
+        
+        // Stop audio processor
+        if (pids.audio) {
+          try {
+            console.log(`Stopping audio processor with PID: ${pids.audio}`);
+            await axios.post('http://localhost:4000/api/stop-processor', { pid: pids.audio });
+            console.log(`Stopped audio processor with PID: ${pids.audio}`);
+          } catch (error) {
+            console.error(`Error stopping audio processor: ${error}`);
+          }
+        }
+        
+        // Stop video processor
+        if (pids.video) {
+          try {
+            console.log(`Stopped video processor with PID: ${pids.video}`);
+            await axios.post('http://localhost:4000/api/stop-processor', { pid: pids.video });
+            console.log(`Stopped video processor with PID: ${pids.video}`);
+          } catch (error) {
+            console.error(`Error stopping video processor: ${error}`);
+          }
+        }
+        
+        // Give time for processes to fully terminate
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Now start new processors
       const response = await axios.post('http://localhost:4000/api/start-processors');
       
       if (response.data.success) {
         console.log("Audio and video processors started successfully:", response.data.pids);
-        
-        // Store PIDs for later cleanup if needed
         localStorage.setItem("processorPids", JSON.stringify(response.data.pids));
+        processorsStartedRef.current = true;
       } else {
         console.error("Failed to start processors");
       }

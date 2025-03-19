@@ -22,6 +22,8 @@ from deepgram import (
     LiveTranscriptionEvents,
     LiveOptions,
 )
+import argparse
+import sys
 
 
 
@@ -374,13 +376,14 @@ class TranscriptionPipeline:
             return False
 
 class AudioProcessor:
-    def __init__(self, api_key):
+    def __init__(self, api_key, transcript_name=None):
         self.host_pipeline = TranscriptionPipeline("host")
         self.client_pipeline = TranscriptionPipeline("client")
         # Set the processor reference in both pipelines
         self.host_pipeline.processor = self
         self.client_pipeline.processor = self
         self.api_key = api_key
+        self.transcript_name = transcript_name
         self.transcript_file = self.create_transcript_file()
         self.sentiment_websocket = None
         self.server = None
@@ -393,14 +396,20 @@ class AudioProcessor:
         print("Creating transcripts directory if needed...")
         os.makedirs('transcripts', exist_ok=True)
         
-        # Create a new transcript file with timestamp in name
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"transcripts/transcript_{timestamp}.txt"
-        print(f"Creating new transcript file: {filename}")
+        if self.transcript_name:
+            # Use provided name if available
+            filename = f"transcripts/{self.transcript_name}.txt"
+            print(f"Creating transcript file with provided name: {filename}")
+        else:
+            # Fall back to timestamp-based name
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"transcripts/transcript_{timestamp}.txt"
+            print(f"Creating transcript file with timestamp: {filename}")
         
         # Write header to the file
         with open(filename, 'w', encoding='utf-8') as f:
-            f.write(f"Transcript started at {timestamp}\n")
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"Transcript started at {current_time}\n")
             f.write("-" * 50 + "\n\n")
             
         return filename
@@ -489,9 +498,17 @@ class AudioProcessor:
 
 async def main():
     try:
+        # Parse command line arguments
+        parser = argparse.ArgumentParser(description="Process audio for call transcription")
+        parser.add_argument("--transcript-name", type=str, help="Name to use for the transcript file")
+        args = parser.parse_args()
+        
+        transcript_name = args.transcript_name if args.transcript_name else None
+        print(f"Using transcript name: {transcript_name or 'auto-generated'}")
+        
         loop = asyncio.get_event_loop()
         
-        processor = AudioProcessor(api_key="d7ce2e3f6336e4d41ab55e54023ebdb03b74f4fd")
+        processor = AudioProcessor(api_key="d7ce2e3f6336e4d41ab55e54023ebdb03b74f4fd", transcript_name=transcript_name)
         await processor.initialize()
 
         for signal in (SIGTERM, SIGINT):
@@ -545,13 +562,16 @@ async def shutdown(signal, loop, processor):
     with open(processor.transcript_file, 'a', encoding='utf-8') as f:
         f.write(f"\n\nTranscript ended at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
+    # Extract base name without extension for DOWNLOADABLES folder
+    base_filename = os.path.basename(processor.transcript_file)
+    name_without_ext = os.path.splitext(base_filename)[0]
+    
     # Create DOWNLOADABLES directory if it doesn't exist
     print("Creating DOWNLOADABLES directory...")
     os.makedirs('DOWNLOADABLES', exist_ok=True)
     
-    # Copy the transcript file to DOWNLOADABLES
-    transcript_filename = os.path.basename(processor.transcript_file)
-    destination_path = os.path.join('DOWNLOADABLES', transcript_filename)
+    # Copy the transcript file to DOWNLOADABLES, keeping the same filename
+    destination_path = os.path.join('DOWNLOADABLES', base_filename)
     shutil.copy2(processor.transcript_file, destination_path)
     print(f"Transcript file saved to: {destination_path}")
     

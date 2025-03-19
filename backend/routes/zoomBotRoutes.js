@@ -241,15 +241,28 @@ router.post('/start-video-processor', (req, res) => {
 /* ============================================================= */
 // Endpoint to start both processors at once
 router.post('/start-processors', (req, res) => {
-    // Paths to Python scripts
+    // Extract transcriptName from request body if provided
+    const { transcriptName } = req.body;
+    
+    // Paths to Python scripts - using path.join to ensure correct paths
     const audioScriptPath = path.join(__dirname, '..', 'audio-processing', 'AudioProcessorFile.py');
     const videoScriptPath = path.join(__dirname, '..', 'video-processing', 'read_video.py');
+    
     console.log(audioScriptPath);
     console.log(videoScriptPath);
     console.log("Starting Audio and Video Processors...");
     
+    // Prepare command line arguments for audio processor
+    const audioArgs = [audioScriptPath];
+    console.log(`Using transcript name outside if: ${transcriptName}`);
+    // Add transcript name argument if provided
+    if (transcriptName) {
+        console.log(`Using transcript name: ${transcriptName}`);
+        audioArgs.push('--transcript-name', transcriptName);
+    }
+    
     // Start Audio Processor with spawn instead of exec
-    const audioProcess = spawn('python3', [audioScriptPath], { 
+    const audioProcess = spawn('python3', audioArgs, { 
         detached: true,
         stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -267,7 +280,7 @@ router.post('/start-processors', (req, res) => {
         console.error(`Audio Processor stderr: ${data}`);
     });
     
-    // Start Video Processor (similar changes)
+    // Start Video Processor (keeping this unchanged)
     const videoProcess = spawn('python3', [videoScriptPath], {
         detached: true,
         stdio: ['ignore', 'pipe', 'pipe']

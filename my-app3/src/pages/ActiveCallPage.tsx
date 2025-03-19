@@ -581,8 +581,23 @@ const ActiveCallPage = () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      // Now start new processors
-      const response = await axios.post('http://localhost:4000/api/start-processors');
+      // Get the transcript name from call data in localStorage
+      let transcriptName = null;
+      const callDataString = localStorage.getItem("callData");
+      if (callDataString) {
+        try {
+          const callData = JSON.parse(callDataString);
+          transcriptName = callData.transcriptName; // This comes from the start-call API response
+          console.log("Using transcript name from call data:", transcriptName);
+        } catch (parseError) {
+          console.error("Error parsing callData from localStorage:", parseError);
+        }
+      }
+      
+      // Now start new processors with the transcript name
+      const response = await axios.post('http://localhost:4000/api/start-processors', {
+        transcriptName: transcriptName
+      });
       
       if (response.data.success) {
         console.log("Audio and video processors started successfully:", response.data.pids);

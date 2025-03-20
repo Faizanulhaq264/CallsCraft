@@ -150,7 +150,7 @@ const HomePage = () => {
               <div
                 className={`flex flex-col ${
                   section.position === "left" ? "md:flex-row" : "md:flex-row-reverse"
-                } items-center`}
+                } items-center ${section.id === "analytics" ? "gap-8" : ""}`}
               >
                 <div
                   className={`md:w-1/2 mb-8 md:mb-0 transition-all duration-1000 transform ${

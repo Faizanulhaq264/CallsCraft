@@ -274,7 +274,7 @@ router.get('/analyze-accomplishments', async (req, res) => {
             const accomplishmentsList = tasks.map(task => task.Goal).join('\n');
             
             // 4. Call Gemini API
-            const GEMINI_API_KEY = "AIzaSyBolXPg8KntJZJ0sJAoGfx2Bx49gRWYYcs";//process.env.GEMINI_API_KEY;
+            const GEMINI_API_KEY = "AIzaSyBolXPg8KntJZ0sJAoGfx2Bx49gRWYYcs";//process.env.GEMINI_API_KEY;
             if (!GEMINI_API_KEY) {
                 return res.status(500).json({ message: 'Gemini API key not configured' });
             }
@@ -709,5 +709,244 @@ router.get('/download-file', (req, res) => {
     }
 });
 /* ============================================================================================ */
+
+/* ============================================================================================ */
+// Get dashboard data for a user
+router.get('/dashboard-data', (req, res) => {
+    const { userID } = req.query;
+    
+    if (!userID) {
+        return res.status(400).json({ message: 'UserID is required' });
+    }
+    
+    // We'll run multiple queries to get all the data needed for the dashboard
+    // 1. Total calls for this user
+    const totalCallsQuery = `
+        SELECT COUNT(*) as totalCalls 
+        FROM meetingCall 
+        WHERE UserID = ?;
+    `;
+    
+    // 2. Calls this month
+    const currentDate = moment().format('YYYY-MM-DD HH:mm:ss');
+    const firstDayOfMonth = moment().startOf('month').format('YYYY-MM-DD HH:mm:ss');
+    
+    const callsThisMonthQuery = `
+        SELECT COUNT(*) as callsThisMonth 
+        FROM meetingCall 
+        WHERE UserID = ? AND StartTime BETWEEN ? AND ?;
+    `;
+    
+    // 3. Average call duration
+    const avgDurationQuery = `
+        SELECT AVG(TIMESTAMPDIFF(MINUTE, StartTime, EndTime)) as avgDuration
+        FROM meetingCall
+        WHERE UserID = ? AND EndTime IS NOT NULL;
+    `;
+    
+    // 4. Tasks completion stats
+    const tasksQuery = `
+        SELECT 
+            SUM(CASE WHEN Status = 1 THEN 1 ELSE 0 END) as completed,
+            SUM(CASE WHEN Status = 0 THEN 1 ELSE 0 END) as incomplete
+        FROM Task
+        WHERE UserID = ?;
+    `;
+    
+    // 5. Most recent call
+    const recentCallQuery = `
+        SELECT 
+            mc.CallID as id,
+            c.Name as clientName,
+            DATE_FORMAT(mc.StartTime, '%Y-%m-%d') as date,
+            CONCAT(
+                TIMESTAMPDIFF(MINUTE, mc.StartTime, 
+                    CASE WHEN mc.EndTime IS NULL THEN NOW() ELSE mc.EndTime END
+                ), ' min'
+            ) as duration,
+            (
+                SELECT 
+                    JSON_OBJECT(
+                        'completed', SUM(CASE WHEN Status = 1 THEN 1 ELSE 0 END),
+                        'incomplete', SUM(CASE WHEN Status = 0 THEN 1 ELSE 0 END)
+                    )
+                FROM Task
+                WHERE CallID = mc.CallID
+            ) as tasks
+        FROM meetingCall mc
+        JOIN Client c ON mc.ClientID = c.ClientID
+        WHERE mc.UserID = ?
+        ORDER BY mc.StartTime DESC
+        LIMIT 1;
+    `;
+    
+    // Execute all queries in parallel
+    Promise.all([
+        new Promise((resolve, reject) => {
+            db.query(totalCallsQuery, [userID], (err, results) => {
+                if (err) reject(err);
+                else resolve(results[0].totalCalls);
+            });
+        }),
+        new Promise((resolve, reject) => {
+            db.query(callsThisMonthQuery, [userID, firstDayOfMonth, currentDate], (err, results) => {
+                if (err) reject(err);
+                else resolve(results[0].callsThisMonth);
+            });
+        }),
+        new Promise((resolve, reject) => {
+            db.query(avgDurationQuery, [userID], (err, results) => {
+                if (err) reject(err);
+                else resolve(results[0].avgDuration || 0);
+            });
+        }),
+        new Promise((resolve, reject) => {
+            db.query(tasksQuery, [userID], (err, results) => {
+                if (err) reject(err);
+                else resolve({
+                    completed: results[0].completed || 0,
+                    incomplete: results[0].incomplete || 0
+                });
+            });
+        }),
+        new Promise((resolve, reject) => {
+            db.query(recentCallQuery, [userID], (err, results) => {
+                if (err) reject(err);
+                else resolve(results.length > 0 ? results[0] : null);
+            });
+        })
+    ])
+    .then(([totalCalls, callsThisMonth, avgDuration, tasks, recentCall]) => {
+        // Format the average duration into "XX min" format
+        const formattedAvgDuration = `${Math.round(avgDuration)} min`;
+        
+        // Process recent call data if it exists
+        let processedRecentCall = null;
+        if (recentCall) {
+            try {
+                // Parse the tasks JSON string if needed
+                const tasksObj = typeof recentCall.tasks === 'string' 
+                    ? JSON.parse(recentCall.tasks) 
+                    : recentCall.tasks;
+                
+                processedRecentCall = {
+                    ...recentCall,
+                    tasks: tasksObj
+                };
+            } catch (e) {
+                console.error('Error parsing tasks JSON:', e);
+                processedRecentCall = recentCall;
+            }
+        }
+        
+        // Build the dashboard data object
+        const dashboardData = {
+            totalCalls,
+            callsThisMonth,
+            averageDuration: formattedAvgDuration,
+            tasks,
+            recentCall: processedRecentCall
+        };
+        
+        res.json(dashboardData);
+    })
+    .catch(err => {
+        console.error('Error fetching dashboard data:', err);
+        res.status(500).json({ message: 'Error fetching dashboard data' });
+    });
+});
+/* ============================================================================================ */
+
+/**
+ * @route   GET /api/call-analytics/:callID
+ * @desc    Get aggregated analytics data for a specific call
+ * @access  Private
+ */
+router.get('/call-analytics/:callID', (req, res) => {
+    const { callID } = req.params;
+    
+    if (!callID) {
+        return res.status(400).json({ message: 'Call ID is required' });
+    }
+    
+    const query = `
+        SELECT 
+            Timestamp as timestamp,
+            AttentionEconomicsScore as attention,
+            MoodInductionScore as mood,
+            ValueInternalizationScore as value,
+            CognitiveResonanceScore as resonance
+        FROM AggregatedResults
+        WHERE CallID = ?
+        ORDER BY Timestamp ASC;
+    `;
+    
+    db.query(query, [callID], (err, results) => {
+        if (err) {
+            console.error('Error fetching call analytics:', err);
+            return res.status(500).json({ message: 'Error fetching call analytics' });
+        }
+        
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'No analytics data found for this call' });
+        }
+        
+        // Process the data to create time-series format
+        const formattedData = processAnalyticsData(results);
+        
+        res.json(formattedData);
+    });
+});
+
+// Function to process raw analytics data into format needed by charts
+function processAnalyticsData(results) {
+    // Format timestamps and prepare data for charting
+    const processedData = {
+        attention: [],
+        mood: [],
+        valueInternalization: [],
+        cognitiveResonance: []
+    };
+    
+    results.forEach((record, index) => {
+        // Format timestamp to minutes:seconds from call start
+        let timeFormatted;
+        if (index === 0) {
+            // For first record, set as start time
+            timeFormatted = "0:00";
+        } else {
+            // For subsequent records, calculate minutes from first record
+            const firstTime = new Date(results[0].timestamp);
+            const currentTime = new Date(record.timestamp);
+            const diffSeconds = Math.floor((currentTime - firstTime) / 1000);
+            const minutes = Math.floor(diffSeconds / 60);
+            const seconds = diffSeconds % 60;
+            timeFormatted = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Add data points to each series
+        processedData.attention.push({
+            time: timeFormatted,
+            value: Math.round(record.attention * 100) // Convert to percentage
+        });
+        
+        processedData.mood.push({
+            time: timeFormatted,
+            value: Math.round(record.mood * 100)
+        });
+        
+        processedData.valueInternalization.push({
+            time: timeFormatted,
+            value: Math.round(record.value * 100)
+        });
+        
+        processedData.cognitiveResonance.push({
+            time: timeFormatted,
+            value: Math.round(record.resonance * 100)
+        });
+    });
+    
+    return processedData;
+}
 
 module.exports = router;

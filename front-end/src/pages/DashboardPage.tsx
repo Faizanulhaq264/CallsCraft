@@ -1,21 +1,55 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import Button from "../components/Button"
 import Navbar from "../components/Navbar"
 import PageTransition from "../components/PageTransition"
+import MetricsGrid from "../components/dashboard/MetricsGrid"
+import TaskCompletionChart from "../components/dashboard/TaskCompletionChart"
+import RecentCallCard from "../components/dashboard/RecentCallCard"
+import QuickActions from "../components/dashboard/QuickActions"
+import { mockDashboardData } from "../data/mockDashboard"
+import { DashboardData } from "../types/Dashboard"
+import axios from "axios"
 
 const DashboardPage = () => {
   const { currentUser } = useAuth()
   const navigate = useNavigate()
+  const [dashboardData, setDashboardData] = useState<DashboardData>(mockDashboardData)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!currentUser?.id) {
+        setError("User not logged in")
+        setIsLoading(false)
+        return
+      }
 
-  // Mock data for dashboard
-  const recentCalls = [
-    { id: 1, client: "John Doe", date: "2023-05-15", duration: "45 min" },
-    { id: 2, client: "Jane Smith", date: "2023-05-14", duration: "30 min" },
-    { id: 3, client: "Bob Johnson", date: "2023-05-12", duration: "60 min" },
-  ]
+      try {
+        setIsLoading(true)
+        const response = await axios.get(`${"http://localhost:4000"}/api/dashboard-data`, {
+          params: { userID: currentUser.id }
+        })
+        
+        setDashboardData(response.data)
+        setError(null)
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err)
+        setError("Failed to load dashboard data. Please try again.")
+        
+        // Fallback to mock data in case of error
+        setDashboardData(mockDashboardData)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [currentUser])
 
   return (
     <PageTransition>
@@ -28,63 +62,32 @@ const DashboardPage = () => {
             <Button onClick={() => navigate("/create-call")}>Create New Call</Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-gray-900 to-black border border-purple-900/30 rounded-xl p-6 shadow-lg hover:shadow-purple-900/10 transition-all duration-300">
-              <h3 className="text-lg font-medium text-gray-300 mb-2">Total Calls</h3>
-              <p className="text-3xl font-bold text-white">24</p>
+          {error && (
+            <div className="bg-red-500/20 border border-red-800 text-white p-4 rounded-md mb-8">
+              {error}
             </div>
+          )}
 
-            <div className="bg-gradient-to-br from-gray-900 to-black border border-purple-900/30 rounded-xl p-6 shadow-lg hover:shadow-purple-900/10 transition-all duration-300">
-              <h3 className="text-lg font-medium text-gray-300 mb-2">This Month</h3>
-              <p className="text-3xl font-bold text-white">8</p>
-            </div>
+          {/* Metrics Cards */}
+          <MetricsGrid 
+            dashboardData={dashboardData} 
+            isLoading={isLoading} 
+          />
 
-            <div className="bg-gradient-to-br from-gray-900 to-black border border-purple-900/30 rounded-xl p-6 shadow-lg hover:shadow-purple-900/10 transition-all duration-300">
-              <h3 className="text-lg font-medium text-gray-300 mb-2">Average Duration</h3>
-              <p className="text-3xl font-bold text-white">32 min</p>
-            </div>
+          {/* Task Completion and Recent Call */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <TaskCompletionChart 
+              taskData={dashboardData.tasks} 
+              isLoading={isLoading} 
+            />
+            <RecentCallCard 
+              recentCall={dashboardData.recentCall} 
+              isLoading={isLoading} 
+            />
           </div>
 
-          <div className="card mb-8">
-            <h3 className="text-xl font-bold mb-4">Recent Calls</h3>
-
-            {recentCalls.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-800">
-                      <th className="text-left py-3 px-4 text-gray-400">Client</th>
-                      <th className="text-left py-3 px-4 text-gray-400">Date</th>
-                      <th className="text-left py-3 px-4 text-gray-400">Duration</th>
-                      <th className="text-right py-3 px-4 text-gray-400">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentCalls.map((call) => (
-                      <tr key={call.id} className="border-b border-gray-800 hover:bg-gray-800/50">
-                        <td className="py-3 px-4">{call.client}</td>
-                        <td className="py-3 px-4">{call.date}</td>
-                        <td className="py-3 px-4">{call.duration}</td>
-                        <td className="py-3 px-4 text-right">
-                          <button className="text-purple-500 hover:text-purple-400">View Details</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-400">No recent calls found.</p>
-            )}
-          </div>
-
-          <div className="card">
-            <h3 className="text-xl font-bold mb-4">Upcoming Calls</h3>
-            <p className="text-gray-400">No upcoming calls scheduled.</p>
-            <Button className="mt-4" onClick={() => navigate("/create-call")}>
-              Schedule a Call
-            </Button>
-          </div>
+          {/* Quick Actions */}
+          <QuickActions />
         </main>
       </div>
     </PageTransition>

@@ -14,6 +14,9 @@ const HomePage = lazy(() => import("./pages/HomePage"))
 const ZoomIntegrationPage = lazy(() => import("./pages/ZoomIntegrationPage"))
 const DashboardPage = lazy(() => import("./pages/DashboardPage"))
 const CreateCallPage = lazy(() => import("./pages/CreateCallPage"))
+const ClientsPage = lazy(() => import("./pages/ClientsPage"))
+const ClientDetailsPage = lazy(() => import("./pages/ClientDetailsPage"))
+
 
 function App() {
   return (
@@ -63,6 +66,22 @@ function App() {
               </ZoomProtectedRoute>
             }
           />          
+          <Route
+            path="/clients"
+            element={
+              <ProtectedRoute>
+                <ClientsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client/:id"
+            element={
+              <ProtectedRoute>
+                <ClientDetailsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

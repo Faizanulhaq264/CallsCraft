@@ -47,6 +47,18 @@ const Navbar = () => {
               </Link>
 
               <Link
+                to="/clients"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-300
+                  ${
+                    isActive("/clients")
+                      ? "bg-gradient-to-r from-purple-600/20 to-purple-500/20 text-white"
+                      : "text-gray-300 hover:text-white hover:bg-gray-800/50"
+                  }`}
+              >
+                Clients
+              </Link>
+
+              <Link
                 to="/create-call"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-300
                   ${

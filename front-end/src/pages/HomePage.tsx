@@ -21,7 +21,7 @@ const sections = [
     id: "features",
     title: "Powerful Features",
     subtitle: "Everything you need to manage your client communications",
-    image: "/post-login.jpg?height=600&width=800",
+    image: "/transcription.jpg?height=600&width=800",
     imageAlt: "Dashboard features",
     position: "left",
   },
@@ -29,14 +29,14 @@ const sections = [
     id: "analytics",
     title: "Detailed Analytics",
     subtitle: "Track your call history and performance metrics",
-    image: "/transcription.jpg?height=600&width=800",
+    image: "/client-page.png?height=600&width=800",
     imageAlt: "Analytics dashboard",
     position: "right",
   },
   {
     id: "security",
     title: "Security",
-    subtitle: "Your data is protected with end-to-end encryption",
+    subtitle: "Your data is protected",
     image: "/security.png?height=600&width=800",
     imageAlt: "Security features",
     position: "left",
@@ -273,7 +273,7 @@ const HomePage = () => {
                           <div className="ml-3">
                             <h3 className="text-lg font-medium text-white">End-to-End Encryption</h3>
                             <p className="mt-1 text-gray-400">
-                              All calls and data are fully encrypted for maximum security
+                              All calls and credentials data are fully encrypted for maximum security
                             </p>
                           </div>
                         </div>

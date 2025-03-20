@@ -169,7 +169,7 @@ const HomePage = () => {
                         </svg>
                       </div>
                       <div className="ml-3">
-                        <h3 className="text-lg font-medium text-white">body and attention metrics</h3>
+                        <h3 className="text-lg font-medium text-white">Body and Attention metrics</h3>
                         <p className="mt-1 text-gray-400">Detect users body posture and track users face & eye gaze</p>
                       </div>
                     </div>
@@ -182,6 +182,28 @@ const HomePage = () => {
                       <div className="ml-3">
                         <h3 className="text-lg font-medium text-white">Live transcription and analysis</h3>
                         <p className="mt-1 text-gray-400">Transcribe client and sales representative speech during Zoom calls</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-lg font-medium text-white">Automated checklist</h3>
+                        <p className="mt-1 text-gray-400">Automates the agenda checklist of user</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-lg font-medium text-white">Real-time Facial Analysis</h3>
+                        <p className="mt-1 text-gray-400">Use AI to analyze facial expressions in real-time, determining the dominant emotion.</p>
                       </div>
                     </div>
                   </div>

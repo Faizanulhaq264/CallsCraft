@@ -376,9 +376,14 @@ const HomePage = () => {
                   <h4 className="text-white font-medium mb-4">Resources</h4>
                   <ul className="space-y-2">
                     <li>
-                      <a href="#" className="text-gray-400 hover:text-white">
+                        <a 
+                        href="/documentation.pdf" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-gray-400 hover:text-white"
+                        >
                         Documentation
-                      </a>
+                        </a>
                     </li>
                     <li>
                       <a href="#" className="text-gray-400 hover:text-white">

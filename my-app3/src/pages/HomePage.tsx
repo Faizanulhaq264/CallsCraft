@@ -21,7 +21,7 @@ const sections = [
     id: "features",
     title: "Powerful Features",
     subtitle: "Everything you need to manage your client communications",
-    image: "/placeholder.svg?height=600&width=800",
+    image: "/transcription.jpg?height=600&width=800",
     imageAlt: "Dashboard features",
     position: "left",
   },
@@ -128,7 +128,7 @@ const HomePage = () => {
               <div className="relative">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-lg blur opacity-30"></div>
                 <img
-                  src="/placeholder.svg?height=600&width=800"
+                  src="/call.jpg?height=600&width=800"
                   alt="Video call interface"
                   className="w-full h-auto rounded-lg relative z-10 border border-gray-800"
                 />

@@ -96,7 +96,7 @@ const HomePage = () => {
               }`}
             >
               <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-                Professional Video Calls Made Simple
+                Sales Video Meetings Made Simple
               </h1>
               <p className="text-xl text-gray-300 mb-8">
                 Connect with your clients through seamless Zoom integration. Schedule, manage, and analyze your calls
@@ -169,8 +169,8 @@ const HomePage = () => {
                         </svg>
                       </div>
                       <div className="ml-3">
-                        <h3 className="text-lg font-medium text-white">Feature Point 1</h3>
-                        <p className="mt-1 text-gray-400">Detailed description of this amazing feature</p>
+                        <h3 className="text-lg font-medium text-white">body and attention metrics</h3>
+                        <p className="mt-1 text-gray-400">Detect users body posture and track users face & eye gaze</p>
                       </div>
                     </div>
                     <div className="flex items-start">
@@ -180,8 +180,8 @@ const HomePage = () => {
                         </svg>
                       </div>
                       <div className="ml-3">
-                        <h3 className="text-lg font-medium text-white">Feature Point 2</h3>
-                        <p className="mt-1 text-gray-400">Another great feature explained in detail</p>
+                        <h3 className="text-lg font-medium text-white">Live transcription and analysis</h3>
+                        <p className="mt-1 text-gray-400">Transcribe client and sales representative speech during Zoom calls</p>
                       </div>
                     </div>
                   </div>
@@ -217,7 +217,7 @@ const HomePage = () => {
               Ready to Transform Your Client Calls?
             </h2>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Join thousands of professionals who use CallsCraft to manage their client communications efficiently.
+              Join our fleet full of professionals who use CallsCraft to manage their client communications efficiently.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {currentUser ? (

@@ -37,7 +37,7 @@ const sections = [
     id: "security",
     title: "Security",
     subtitle: "Your data is protected with end-to-end encryption",
-    image: "/placeholder.svg?height=600&width=800",
+    image: "/security.png?height=600&width=800",
     imageAlt: "Security features",
     position: "left",
   },

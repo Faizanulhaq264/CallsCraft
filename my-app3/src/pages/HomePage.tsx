@@ -406,14 +406,9 @@ const HomePage = () => {
                       </a>
                     </li>
                     <li>
-                      <a href="#" className="text-gray-400 hover:text-white">
-                        Careers
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" className="text-gray-400 hover:text-white">
+                        <a href="mailto:i211183@nu.edu.pk" className="text-gray-400 hover:text-white">
                         Contact
-                      </a>
+                        </a>
                     </li>
                   </ul>
                 </div>

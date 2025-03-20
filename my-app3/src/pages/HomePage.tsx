@@ -21,7 +21,7 @@ const sections = [
     id: "features",
     title: "Powerful Features",
     subtitle: "Everything you need to manage your client communications",
-    image: "/placeholder.svg?height=600&width=800",
+    image: "/transcription.jpg?height=600&width=800",
     imageAlt: "Dashboard features",
     position: "left",
   },
@@ -35,7 +35,7 @@ const sections = [
   },
   {
     id: "security",
-    title: "Enterprise Security",
+    title: "Security",
     subtitle: "Your data is protected with end-to-end encryption",
     image: "/placeholder.svg?height=600&width=800",
     imageAlt: "Security features",
@@ -96,7 +96,7 @@ const HomePage = () => {
               }`}
             >
               <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-                Professional Video Calls Made Simple
+                Sales Video Meetings Made Simple
               </h1>
               <p className="text-xl text-gray-300 mb-8">
                 Connect with your clients through seamless Zoom integration. Schedule, manage, and analyze your calls
@@ -128,7 +128,7 @@ const HomePage = () => {
               <div className="relative">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-lg blur opacity-30"></div>
                 <img
-                  src="/placeholder.svg?height=600&width=800"
+                  src="/call.jpg?height=600&width=800"
                   alt="Video call interface"
                   className="w-full h-auto rounded-lg relative z-10 border border-gray-800"
                 />
@@ -161,29 +161,135 @@ const HomePage = () => {
                     {section.title}
                   </h2>
                   <p className="text-xl text-gray-300 mb-8">{section.subtitle}</p>
+
                   <div className="space-y-4">
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
-                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <h3 className="text-lg font-medium text-white">Feature Point 1</h3>
-                        <p className="mt-1 text-gray-400">Detailed description of this amazing feature</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
-                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <h3 className="text-lg font-medium text-white">Feature Point 2</h3>
-                        <p className="mt-1 text-gray-400">Another great feature explained in detail</p>
-                      </div>
-                    </div>
+                    {section.id === "features" && (
+                      <>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-lg font-medium text-white">Body and Attention metrics</h3>
+                            <p className="mt-1 text-gray-400">
+                              Detect users body posture and track users face & eye gaze
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-lg font-medium text-white">Live transcription and analysis</h3>
+                            <p className="mt-1 text-gray-400">
+                              Transcribe client and sales representative speech during Zoom calls
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-lg font-medium text-white">Automated checklist</h3>
+                            <p className="mt-1 text-gray-400">Automates the agenda checklist of user</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-lg font-medium text-white">Real-time Facial Analysis</h3>
+                            <p className="mt-1 text-gray-400">
+                              Use AI to analyze facial expressions in real-time, determining the dominant emotion.
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {section.id === "analytics" && (
+                      <>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-lg font-medium text-white">Comprehensive Dashboards</h3>
+                            <p className="mt-1 text-gray-400">
+                              Visual reports of call performance and client engagement metrics
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-lg font-medium text-white">Sentiment Analysis</h3>
+                            <p className="mt-1 text-gray-400">
+                              Track client sentiment throughout calls to identify key moments
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-lg font-medium text-white">Attention Analysis</h3>
+                            <p className="mt-1 text-gray-400">
+                              Monitor how the client reacts to the sales pitches
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {section.id === "security" && (
+                      <>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-lg font-medium text-white">End-to-End Encryption</h3>
+                            <p className="mt-1 text-gray-400">
+                              All calls and data are fully encrypted for maximum security
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 flex items-center justify-center mt-1">
+                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-lg font-medium text-white">Audit Logging</h3>
+                            <p className="mt-1 text-gray-400">Comprehensive logs of all system access and activities</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div
@@ -217,7 +323,7 @@ const HomePage = () => {
               Ready to Transform Your Client Calls?
             </h2>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Join thousands of professionals who use CallsCraft to manage their client communications efficiently.
+              Join our fleet full of professionals who use CallsCraft to manage their client communications efficiently.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {currentUser ? (

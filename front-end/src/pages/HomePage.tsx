@@ -85,7 +85,7 @@ const HomePage = () => {
         {/* Hero Section */}
         <section
           id="hero"
-          ref={(el) => (sectionRefs.current["hero"] = el)}
+          ref={(el) => {sectionRefs.current["hero"] = el;}}
           className="min-h-screen pt-20 flex flex-col justify-center relative overflow-hidden"
         >
           <div className="absolute inset-0 bg-gradient-radial from-purple-900/10 to-transparent"></div>
@@ -142,7 +142,7 @@ const HomePage = () => {
           <section
             key={section.id}
             id={section.id}
-            ref={(el) => (sectionRefs.current[section.id] = el)}
+            ref={(el) => {sectionRefs.current[section.id] = el;}}
             className="min-h-screen flex items-center relative overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-radial from-purple-900/10 to-transparent opacity-50"></div>
